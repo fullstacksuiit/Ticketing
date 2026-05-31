@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Sign up — BusGo{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md">
+  <div class="card p-8">
+    <div class="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-brand/10 text-brand">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900">Create your account</h1>
+    <p class="mt-1 text-sm text-slate-500">Book tickets, or list your buses and earn.</p>
+
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-1.5">
+        {% for radio in form.role %}
+          <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:ring-1 has-[:checked]:ring-brand/30">
+            {{ radio.tag }}
+            <span class="font-medium text-slate-700">{{ radio.choice_label }}</span>
+          </label>
+        {% endfor %}
+        {% for err in form.role.errors %}<p class="px-3 text-xs text-rose-600">{{ err }}</p>{% endfor %}
+      </div>
+
+      {% for field in form %}
+        {% if field.name != 'role' %}
+          <div>
+            <label class="label">{{ field.label }}</label>
+            {{ field }}
+            {% for err in field.errors %}<p class="mt-1 text-xs text-rose-600">{{ err }}</p>{% endfor %}
+            {% if field.help_text %}<p class="mt-1 text-xs text-slate-400">{{ field.help_text|safe }}</p>{% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <button class="btn-primary w-full justify-center py-3">Create account</button>
+    </form>
+
+    <p class="mt-5 text-center text-sm text-slate-500">
+      Already have an account? <a href="{% url 'login' %}" class="font-semibold text-brand hover:underline">Log in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

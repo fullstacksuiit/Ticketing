@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}My Bookings — BusGo{% endblock %}
+
+{% block content %}
+<h1 class="mb-5 text-2xl font-bold text-slate-900">My Bookings</h1>
+
+{% if bookings %}
+  <div class="space-y-3">
+    {% for b in bookings %}
+      <a href="{% url 'ticket' b.pnr %}" class="card card-hover block p-5">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/><path d="M4 9h16"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-slate-900">{{ b.trip.route }}</p>
+              <p class="text-sm text-slate-500">{{ b.trip.departure|date:"d M Y, H:i" }} · Seats {{ b.seat_numbers }}</p>
+              <p class="mt-0.5 text-xs text-slate-400">PNR {{ b.pnr }}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-lg font-extrabold text-slate-900">₹{{ b.total_amount }}</p>
+            <span class="{% if b.status == 'confirmed' %}badge-green{% elif b.status == 'cancelled' %}badge-red{% else %}badge-amber{% endif %} mt-1">{{ b.get_status_display }}</span>
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card flex flex-col items-center gap-3 p-12 text-center">
+    <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-3xl">🎟️</div>
+    <p class="font-semibold text-slate-700">No bookings yet</p>
+    <a href="{% url 'home' %}" class="btn-primary mt-1">Find a bus</a>
+  </div>
+{% endif %}
+{% endblock %}

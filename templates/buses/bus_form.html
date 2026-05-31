@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Add bus — BusGo{% endblock %}
+
+{% block content %}
+{% include "operators/_nav.html" %}
+
+<div class="mx-auto max-w-2xl">
+  <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card">
+    <div class="bg-gradient-to-r from-brand-700 to-brand px-6 py-6 text-white">
+      <h1 class="text-xl font-bold">Add a bus</h1>
+      <p class="mt-1 text-sm text-white/80">Set the basics. Next you'll lay out the seats one by one in the seat designer.</p>
+    </div>
+
+    <form method="post" class="space-y-6 p-6">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="label">{{ form.name.label }}</label>
+          {{ form.name }}
+          {% for e in form.name.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="sm:col-span-2">
+          <label class="label">{{ form.registration_number.label }}</label>
+          {{ form.registration_number }}
+          {% for e in form.registration_number.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <p class="label">Type &amp; amenities</p>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {% for f in form %}
+            {% if f.name != 'name' and f.name != 'registration_number' %}
+              <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-brand/40 has-[:checked]:border-brand has-[:checked]:bg-brand/5 has-[:checked]:text-brand">
+                {{ f }} <span>{{ f.label }}</span>
+              </label>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 pt-4">
+        <button class="btn-primary">Create bus &amp; design seats</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

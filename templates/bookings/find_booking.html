@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Find my ticket — BusGo{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md">
+  <div class="card p-8">
+    <div class="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-brand/10 text-brand">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900">Find my ticket</h1>
+    <p class="mt-1 text-sm text-slate-500">Enter the PNR and the email you booked with.</p>
+
+    {% if error %}
+      <div class="mt-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+        <span>⚠️</span><span>{{ error }}</span>
+      </div>
+    {% endif %}
+
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="label">PNR</label>
+        <input type="text" name="pnr" placeholder="e.g. BG7K2QX9" required class="input uppercase">
+      </div>
+      <div>
+        <label class="label">Contact email</label>
+        <input type="email" name="email" placeholder="you@example.com" required class="input">
+      </div>
+      <button class="btn-primary w-full justify-center py-3">View ticket</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

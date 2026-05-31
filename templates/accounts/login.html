@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Log in — BusGo{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md">
+  <div class="card p-8">
+    <div class="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-brand/10 text-brand">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900">Welcome back</h1>
+    <p class="mt-1 text-sm text-slate-500">Log in to book or manage your buses.</p>
+
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          <span>⚠️</span><span>{% for err in form.non_field_errors %}{{ err }}{% endfor %}</span>
+        </div>
+      {% endif %}
+      <div>
+        <label class="label">Username</label>
+        <input type="text" name="username" autofocus required class="input">
+      </div>
+      <div>
+        <label class="label">Password</label>
+        <input type="password" name="password" required class="input">
+      </div>
+      <button class="btn-primary w-full justify-center py-3">Log in</button>
+    </form>
+
+    <p class="mt-5 text-center text-sm text-slate-500">
+      New here? <a href="{% url 'signup' %}" class="font-semibold text-brand hover:underline">Create an account</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

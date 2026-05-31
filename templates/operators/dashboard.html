@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Operator dashboard — BusGo{% endblock %}
+
+{% block content %}
+{% include "operators/_nav.html" %}
+
+<div class="flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">{{ operator.company_name }}</h1>
+    <p class="text-sm text-slate-500">Operator dashboard</p>
+  </div>
+  <a href="{% url 'operator_onboarding' %}" class="btn-outline px-4 py-2 text-sm">Edit profile</a>
+</div>
+
+<!-- Approval status banner -->
+{% if operator.status == 'approved' %}
+  <div class="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
+    <span class="text-lg">✅</span>
+    <div>Your account is <strong>approved</strong>. Commission rate:
+      {% if operator.is_self_operated %}0% (your own buses){% else %}{{ operator.commission_rate }}%{% endif %}.</div>
+  </div>
+{% elif operator.status == 'pending' %}
+  <div class="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+    <span class="text-lg">⏳</span>
+    <div>Your profile is <strong>pending approval</strong>. You can add buses once approved.</div>
+  </div>
+{% elif operator.status == 'suspended' %}
+  <div class="mt-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+    <span class="text-lg">⛔</span>
+    <div>Your account is <strong>suspended</strong>. Please contact support.</div>
+  </div>
+{% else %}
+  <div class="mt-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+    <span class="text-lg">❌</span>
+    <div>Your application was <strong>not approved</strong>. Edit your profile and resubmit.</div>
+  </div>
+{% endif %}
+
+{% if operator.is_approved %}
+<!-- Management tiles -->
+<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <a href="{% url 'bus_list' %}" class="card card-hover p-5">
+    <div class="grid h-11 w-11 place-items-center rounded-xl bg-brand/10 text-brand">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/><path d="M4 9h16"/></svg>
+    </div>
+    <h3 class="mt-3 font-semibold text-slate-900">My Buses</h3>
+    <p class="mt-1 text-xs text-slate-500">Add buses &amp; seat layouts.</p>
+  </a>
+  <a href="{% url 'route_list' %}" class="card card-hover p-5">
+    <div class="grid h-11 w-11 place-items-center rounded-xl bg-brand/10 text-brand">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 19h6a3 3 0 0 0 3-3V8"/></svg>
+    </div>
+    <h3 class="mt-3 font-semibold text-slate-900">Routes</h3>
+    <p class="mt-1 text-xs text-slate-500">Source, destination &amp; stops.</p>
+  </a>
+  <a href="{% url 'trip_list' %}" class="card card-hover p-5">
+    <div class="grid h-11 w-11 place-items-center rounded-xl bg-brand/10 text-brand">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a3 3 0 0 1 0 8v2h18v-2a3 3 0 0 1 0-8V6H3Z"/></svg>
+    </div>
+    <h3 class="mt-3 font-semibold text-slate-900">Trips</h3>
+    <p class="mt-1 text-xs text-slate-500">Schedule trips and set fares.</p>
+  </a>
+  <a href="{% url 'operator_earnings' %}" class="card card-hover p-5">
+    <div class="grid h-11 w-11 place-items-center rounded-xl bg-emerald-100 text-emerald-600">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9A2.5 2 0 0 0 12 7.5c-1.4 0-2.5.7-2.5 2s1.1 1.7 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2A2.5 2 0 0 1 9.5 16"/></svg>
+    </div>
+    <h3 class="mt-3 font-semibold text-slate-900">Earnings</h3>
+    <p class="mt-1 text-xs text-slate-500">Payouts after commission.</p>
+  </a>
+</div>
+
+<div class="mt-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
+  <span class="text-lg">🚀</span>
+  <div><strong>Getting started:</strong> add a <a href="{% url 'bus_add' %}" class="font-semibold underline">bus</a> →
+    create a <a href="{% url 'route_add' %}" class="font-semibold underline">route</a> with stops →
+    <a href="{% url 'trip_add' %}" class="font-semibold underline">schedule a trip</a>. Your trip then shows up in passenger search.</div>
+</div>
+{% else %}
+<div class="card mt-6 p-10 text-center text-slate-500">
+  Inventory management unlocks once your account is approved.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Ticket {{ booking.pnr }} — BusGo{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-card">
+    <!-- Confirmation banner -->
+    <div class="relative overflow-hidden bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-6 text-white">
+      <div class="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-xl"></div>
+      <div class="relative flex items-center justify-between">
+        <div>
+          <p class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide opacity-90">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Booking confirmed
+          </p>
+          <p class="mt-1 text-3xl font-extrabold tracking-tight">PNR {{ booking.pnr }}</p>
+        </div>
+        <div class="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 text-3xl ring-1 ring-white/25">🎫</div>
+      </div>
+    </div>
+
+    <!-- Operator / bus -->
+    <div class="flex items-center justify-between px-6 py-5">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-slate-400">Operator</p>
+        <p class="font-semibold text-slate-900">{{ booking.trip.bus.operator.company_name }}</p>
+      </div>
+      <div class="text-right">
+        <p class="text-xs uppercase tracking-wide text-slate-400">Bus</p>
+        <p class="font-semibold text-slate-900">{{ booking.trip.bus.name }}</p>
+      </div>
+    </div>
+
+    <!-- Perforation divider -->
+    <div class="relative">
+      <div class="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-slate-50"></div>
+      <div class="absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-slate-50"></div>
+      <div class="mx-6 border-t-2 border-dashed border-slate-200"></div>
+    </div>
+
+    <!-- Journey -->
+    <div class="px-6 py-5">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xl font-extrabold text-slate-900">{{ booking.journey_from }}</p>
+          <p class="text-xs text-slate-500">{{ booking.trip.departure|date:"d M Y, H:i" }}</p>
+          {% if booking.boarding_label %}<p class="mt-0.5 text-xs text-slate-400">Board: {{ booking.boarding_label }}</p>{% endif %}
+        </div>
+        <div class="flex flex-1 items-center gap-2 px-2">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span class="h-px flex-1 bg-slate-200"></span>
+          <svg class="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/></svg>
+          <span class="h-px flex-1 bg-slate-200"></span>
+          <span class="h-2 w-2 rounded-full bg-brand"></span>
+        </div>
+        <div class="text-right">
+          <p class="text-xl font-extrabold text-slate-900">{{ booking.journey_to }}</p>
+          <p class="text-xs text-slate-500">{{ booking.trip.arrival|date:"d M Y, H:i" }}</p>
+          {% if booking.dropping_label %}<p class="mt-0.5 text-xs text-slate-400">Drop: {{ booking.dropping_label }}</p>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Passengers -->
+    <div class="px-6 pb-2">
+      <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Passengers</p>
+      <div class="overflow-hidden rounded-xl border border-slate-100">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase text-slate-400">
+            <tr><th class="px-3 py-2">Seat</th><th class="px-3 py-2">Name</th><th class="px-3 py-2">Age</th><th class="px-3 py-2">Gender</th><th class="px-3 py-2 text-right">Fare</th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for bs in booking.booked_seats.all %}
+              <tr>
+                <td class="px-3 py-2 font-semibold text-brand">{{ bs.seat.seat_number }}</td>
+                <td class="px-3 py-2">{{ bs.passenger_name }}</td>
+                <td class="px-3 py-2">{{ bs.passenger_age }}</td>
+                <td class="px-3 py-2">{{ bs.get_passenger_gender_display }}</td>
+                <td class="px-3 py-2 text-right">₹{{ bs.fare }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div class="m-6 flex items-center justify-between rounded-2xl bg-slate-900 px-5 py-4 text-white">
+      <span class="text-sm font-medium opacity-80">Total paid</span>
+      <span class="text-2xl font-extrabold">₹{{ booking.total_amount }}</span>
+    </div>
+  </div>
+
+  <div class="mt-5 flex items-center justify-center gap-4 text-sm">
+    <a href="{% url 'my_bookings' %}" class="font-semibold text-brand hover:underline">View all my bookings →</a>
+    <span class="text-slate-300">·</span>
+    <button onclick="window.print()" class="font-medium text-slate-500 hover:text-slate-700">Print ticket</button>
+  </div>
+</div>
+{% endblock %}

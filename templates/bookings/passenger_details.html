@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Passenger details — BusGo{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+  <h1 class="text-2xl font-bold text-slate-900">Passenger details</h1>
+  <p class="mt-1 text-sm text-slate-500">{{ from_city }} → {{ to_city }} · {{ trip.departure|date:"d M, H:i" }} · {{ trip.bus.operator.company_name }}</p>
+</div>
+
+{% if not user.is_authenticated %}
+  <div class="mb-5 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+    <span>ℹ️</span>
+    <span>Booking as a guest — no account needed.
+      <a href="{% url 'login' %}?next={{ request.path }}" class="font-semibold underline">Log in</a> to track your bookings (optional).</span>
+  </div>
+{% endif %}
+
+<form method="post" action="{% url 'trip_book' trip.id %}">
+  {% csrf_token %}
+  <input type="hidden" name="from" value="{{ from_city }}">
+  <input type="hidden" name="to" value="{{ to_city }}">
+
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_20rem]">
+    <div class="space-y-5">
+      <!-- Passengers -->
+      <div class="card p-6">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Passengers</h2>
+        <div class="space-y-4">
+          {% for seat in seats %}
+            <input type="hidden" name="seat_id" value="{{ seat.id }}">
+            <div class="rounded-2xl border border-slate-200 p-4">
+              <p class="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
+                <span class="grid h-7 w-7 place-items-center rounded-lg bg-brand/10 text-xs font-bold text-brand">{{ seat.seat_number }}</span>
+                Seat {{ seat.seat_number }}
+                <span class="text-xs font-normal text-slate-400">({{ seat.get_seat_type_display }})</span>
+                {% for tag in seat.tags_list %}<span class="badge-slate">{{ tag }}</span>{% endfor %}
+                <span data-seat-fare="{{ seat.id }}" class="ml-auto text-sm font-bold text-slate-700">₹{{ seat.trip_fare }}</span>
+              </p>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <input type="text" name="name_{{ seat.id }}" placeholder="Full name" required class="input">
+                <input type="number" name="age_{{ seat.id }}" placeholder="Age" min="1" max="120" required class="input">
+                <select name="gender_{{ seat.id }}" class="input">
+                  <option value="M">Male</option><option value="F">Female</option><option value="O">Other</option>
+                </select>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Boarding / contact -->
+      <div class="card p-6">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Boarding &amp; contact</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label class="label">Boarding point</label>
+            <select name="boarding" data-boarding class="input">
+              {% for g in boarding %}<optgroup label="{{ g.city }}">{% for o in g.options %}<option value="{{ o.value }}" data-city="{{ o.city }}" {% if o.city == from_city %}selected{% endif %}>{{ o.label }}</option>{% endfor %}</optgroup>{% empty %}<option value="">—</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label">Dropping point</label>
+            <select name="dropping" data-dropping class="input">
+              {% for g in dropping %}<optgroup label="{{ g.city }}">{% for o in g.options %}<option value="{{ o.value }}" data-city="{{ o.city }}" {% if o.city == to_city %}selected{% endif %}>{{ o.label }}</option>{% endfor %}</optgroup>{% empty %}<option value="">—</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label">Contact email</label>
+            <input type="email" name="contact_email" value="{{ user.email }}" required class="input">
+            <p class="mt-1 text-xs text-slate-400">We'll send your ticket &amp; PNR here.</p>
+          </div>
+          <div>
+            <label class="label">Contact phone</label>
+            <input type="text" name="contact_phone" value="{{ user.phone }}" class="input">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky order summary -->
+    <aside class="lg:sticky lg:top-24 lg:self-start">
+      <div class="card p-5">
+        <h3 class="text-sm font-semibold text-slate-900">Fare summary</h3>
+        <div class="mt-3 space-y-2 text-sm">
+          <div class="flex items-center justify-between text-slate-500">
+            <span>Seats</span><span class="font-medium text-slate-700">{{ seats|length }}</span>
+          </div>
+          <div class="flex items-center justify-between text-slate-500">
+            <span>Route <span data-segment-label class="text-slate-400"></span></span>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between border-t border-dashed border-slate-200 pt-4">
+          <span class="text-sm font-medium text-slate-600">Total payable</span>
+          <span class="text-2xl font-extrabold text-slate-900">₹<span data-total>{{ total }}</span></span>
+        </div>
+        <button data-pay class="btn-success mt-4 w-full justify-center py-3 text-base">Pay ₹{{ total }}</button>
+        <p class="mt-3 text-center text-[11px] text-slate-400">🔒 Test payment — no real money is charged.</p>
+      </div>
+    </aside>
+  </div>
+</form>
+
+{{ fare_map|json_script:"fare-map" }}
+{{ seat_premiums|json_script:"seat-premiums" }}
+<script>
+  // Reprice live as the passenger changes boarding/dropping city: fare =
+  // segment base fare + each seat's premium. Server re-validates on submit.
+  (function () {
+    var fares = JSON.parse(document.getElementById('fare-map').textContent);
+    var premiums = JSON.parse(document.getElementById('seat-premiums').textContent);
+    var boarding = document.querySelector('[data-boarding]');
+    var dropping = document.querySelector('[data-dropping]');
+    var totalEl = document.querySelector('[data-total]');
+    var payEl = document.querySelector('[data-pay]');
+    var labelEl = document.querySelector('[data-segment-label]');
+    if (!boarding || !dropping) return;
+
+    function cityOf(sel) {
+      var opt = sel.options[sel.selectedIndex];
+      return opt ? (opt.getAttribute('data-city') || '') : '';
+    }
+    function reprice() {
+      var from = cityOf(boarding), to = cityOf(dropping);
+      var base = fares[from + '|' + to];
+      if (base === undefined) {
+        // Out-of-order pick (e.g. boarding after dropping) — flag and block pay.
+        labelEl.textContent = '· pick an earlier boarding city';
+        payEl.disabled = true; payEl.classList.add('opacity-50', 'cursor-not-allowed');
+        return;
+      }
+      base = parseFloat(base);
+      var total = 0;
+      Object.keys(premiums).forEach(function (id) {
+        var fare = Math.max(0, base + parseFloat(premiums[id]));
+        total += fare;
+        var span = document.querySelector('[data-seat-fare="' + id + '"]');
+        if (span) span.textContent = '₹' + fare.toFixed(2);
+      });
+      labelEl.textContent = '· ' + from + ' → ' + to;
+      totalEl.textContent = total.toFixed(2);
+      payEl.textContent = 'Pay ₹' + total.toFixed(2);
+      payEl.disabled = false; payEl.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    boarding.addEventListener('change', reprice);
+    dropping.addEventListener('change', reprice);
+    reprice();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+{% block title %}Seat layout — {{ bus.name }}{% endblock %}
+
+{% block content %}
+{% include "operators/_nav.html" %}
+
+{{ layout|json_script:"layout-data" }}
+
+<div class="card p-6">
+  <!-- Header -->
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Design seat layout</h1>
+      <p class="mt-1 text-sm text-slate-500">
+        {{ bus.name }} · click a “+” cell to add a seat, or drag a tile from the palette.
+        Drag a placed seat to move it, click it to edit. This is exactly what passengers will see.
+      </p>
+    </div>
+    <form method="post" id="layout-form" class="shrink-0">
+      {% csrf_token %}
+      <input type="hidden" name="layout" id="layout-input">
+      <button type="submit" class="btn-primary">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Save layout
+      </button>
+    </form>
+  </div>
+
+  <!-- Toolbar: deck tabs + grid controls -->
+  <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+    <div class="flex items-center gap-1.5 rounded-xl bg-slate-100 p-1" id="deck-tabs"></div>
+    <div class="flex flex-wrap items-center gap-3 text-sm">
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rows</span>
+        <div class="stepper">
+          <button type="button" data-dim="rows" data-step="-1">−</button>
+          <span id="rows-count"></span>
+          <button type="button" data-dim="rows" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cols</span>
+        <div class="stepper">
+          <button type="button" data-dim="cols" data-step="-1">−</button>
+          <span id="cols-count"></span>
+          <button type="button" data-dim="cols" data-step="1">+</button>
+        </div>
+      </div>
+      <button type="button" id="upper-toggle" class="btn-outline px-3 py-1.5 text-xs"></button>
+    </div>
+  </div>
+
+  <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[10rem_1fr_19rem]">
+    <!-- Palette -->
+    <div class="self-start">
+      <p class="label">Palette</p>
+      <p class="-mt-1 mb-3 text-[11px] text-slate-400">Drag onto a cell</p>
+      <div class="space-y-2.5">
+        <div class="pal" draggable="true" data-tool="seater">
+          <span class="seat-shape t-seater pointer-events-none"><b>A1</b><em>Seater</em></span>
+          <span class="text-sm font-semibold text-slate-700">Seater</span>
+        </div>
+        <div class="pal" draggable="true" data-tool="sleeper">
+          <span class="seat-shape t-sleeper is-sleeper pointer-events-none"><b>A1</b><em>Sleeper</em></span>
+          <span class="text-sm font-semibold text-slate-700">Sleeper</span>
+        </div>
+        <div class="pal" draggable="true" data-tool="aisle">
+          <span class="aisle pointer-events-none">⋮</span>
+          <span class="text-sm font-semibold text-amber-700">Aisle / gap</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div>
+      <!-- Quick fill: generates a repeating L + aisle + R pattern as a starting point. -->
+      <div class="mb-3 flex flex-wrap items-end gap-x-3 gap-y-2 rounded-xl border border-slate-200 bg-white p-3">
+        <div class="flex items-center gap-1 text-sm font-semibold text-slate-700">
+          <svg class="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg>
+          Quick fill
+        </div>
+        <div><label class="label">Left</label><input id="qf-left" type="number" min="0" max="4" value="2" class="input" style="width:4rem"></div>
+        <div><label class="label">Right</label><input id="qf-right" type="number" min="0" max="4" value="2" class="input" style="width:4rem"></div>
+        <div><label class="label">Rows</label><input id="qf-rows" type="number" min="1" max="20" value="10" class="input" style="width:4.5rem"></div>
+        <div><label class="label">Type</label>
+          <select id="qf-type" class="input" style="width:7rem">
+            {% for value, label in seat_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <button type="button" id="qf-generate" class="btn-outline px-3.5 py-2 text-sm">Generate</button>
+        <p class="basis-full text-[11px] text-slate-400">Aisle beech me aata hai. Back row / front single seat / special cells baad me tweak karo.</p>
+      </div>
+
+      <div class="inline-block rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          <span>▲ Front</span>
+          <span class="flex items-center gap-1">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5V4.5M10 13.2 6 16M14 13.2 18 16"/></svg>
+            Driver
+          </span>
+        </div>
+        <div id="grid"></div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+        <span class="flex items-center gap-1.5"><i class="lg t-seater"></i> Seater</span>
+        <span class="flex items-center gap-1.5"><i class="lg t-sleeper is-sleeper"></i> Sleeper</span>
+        <span class="flex items-center gap-1.5"><i class="lg ladies"></i> Ladies</span>
+        <span class="flex items-center gap-1.5"><i class="lg reserved"></i> Reserved</span>
+        <span class="flex items-center gap-1.5"><i class="lg lg-aisle"></i> Aisle</span>
+        <span class="flex items-center gap-1.5">🪟 Window · +₹ premium</span>
+      </div>
+    </div>
+
+    <!-- Edit panel -->
+    <div id="panel" class="card hidden self-start p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-slate-900">Edit seat</h3>
+        <button type="button" id="seat-delete" class="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+          Delete
+        </button>
+      </div>
+      <div class="mt-3"><label class="label">Label / number</label><input id="f-number" maxlength="8" class="input"></div>
+      <div class="mt-3"><label class="label">Type</label>
+        <select id="f-type" class="input">
+          {% for value, label in seat_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="mt-3"><label class="label">Length (rows)</label>
+        <select id="f-span" class="input">
+          <option value="1">1 — single</option>
+          <option value="2">2 — full berth</option>
+        </select>
+      </div>
+      <div class="mt-3"><label class="label">Price premium (₹)</label><input id="f-price" type="number" step="1" class="input"></div>
+      <div class="mt-4 space-y-2">
+        <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" id="f-window" class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/30"> 🪟 Window seat</label>
+        <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" id="f-ladies" class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/30"> ♀ Ladies only</label>
+        <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" id="f-reserved" class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/30"> 🔒 Reserved (not sold)</label>
+      </div>
+    </div>
+  </div>
+
+  <a href="{% url 'bus_list' %}" class="mt-6 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-brand">← Back to buses</a>
+</div>
+
+<style>
+  .stepper { display:inline-flex; align-items:center; overflow:hidden; border-radius:.75rem; border:1px solid #cbd5e1; background:#fff; }
+  .stepper button { display:grid; place-items:center; height:2rem; width:2rem; color:#475569; transition:.12s; }
+  .stepper button:hover { background:#f8fafc; color:#e11d48; }
+  .stepper span { display:grid; place-items:center; height:2rem; min-width:2.25rem; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; padding:0 .25rem; font-size:.875rem; font-weight:600; color:#1e293b; }
+
+  .deck-tab { border:0; background:transparent; border-radius:.5rem; padding:.375rem .875rem; font-size:.875rem; font-weight:600; cursor:pointer; transition:.12s; }
+  .deck-tab-on { background:#fff; color:#e11d48; box-shadow:0 1px 2px rgba(16,24,40,.08); }
+  .deck-tab-off { color:#64748b; }
+  .deck-tab-off:hover { color:#334155; }
+
+  #grid { display:grid; gap:.45rem; }
+
+  /* Seat icon — a rounded square with faint armrest bars (top-view). */
+  .seat-shape {
+    --c:#94a3b8; position:relative; width:3.1rem; min-height:3rem; box-sizing:border-box;
+    border:2px solid var(--c); border-radius:9px 9px 7px 7px; background:#fff; cursor:grab;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:.7rem; line-height:1.05; color:#334155; text-align:center; padding:.15rem;
+  }
+  .seat-shape::before { content:''; position:absolute; top:7px; bottom:5px; left:1px; right:1px;
+    border-left:3px solid var(--c); border-right:3px solid var(--c); border-radius:5px; opacity:.4; pointer-events:none; }
+  .seat-shape b { font-weight:600; z-index:1; }
+  .seat-shape em { font-style:normal; font-size:.56rem; color:#64748b; z-index:1; }
+  .seat-shape .price { color:#16a34a; font-weight:700; }
+  .seat-shape .win { position:absolute; top:1px; left:3px; font-size:.6rem; z-index:1; }
+  .seat-shape:hover { border-color:#e11d48; }
+  .seat-shape.dragging { opacity:.4; }
+  .seat-shape.sel { outline:2px solid #e11d48; outline-offset:2px; }
+  .is-sleeper { border-radius:9px 9px 14px 14px; }
+  .t-sleeper { --c:#818cf8; background:#eef2ff; }
+  .ladies { --c:#db2777; background:#fdf2f8; }
+  .ladies em { color:#db2777; }
+  .reserved { --c:#cbd5e1; background:#f1f5f9; color:#94a3b8; }
+
+  .add-cell { width:3.1rem; min-height:3rem; border:2px dashed #cbd5e1; border-radius:9px; color:#94a3b8;
+              display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; transition:.12s; }
+  .add-cell:hover, .add-cell.drop-hot { border-color:#e11d48; color:#e11d48; background:#fff1f3; }
+
+  .aisle { width:3.1rem; min-height:3rem; border:2px dashed #f59e0b; background:#fffbeb; color:#b45309;
+           border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; }
+  .aisle:hover { background:#fef3c7; }
+
+  /* Palette rows */
+  .pal { display:flex; align-items:center; gap:.75rem; border-radius:.75rem; border:1px solid #e2e8f0; background:#fff; padding:.5rem; transition:.12s; cursor:grab; }
+  .pal:hover { border-color:#e11d48; box-shadow:0 1px 2px rgba(16,24,40,.06); }
+  .pal:active { cursor:grabbing; }
+  .pal .seat-shape, .pal .aisle { width:2.6rem; min-height:2.6rem; cursor:grab; }
+
+  /* legend swatches */
+  .lg { width:1.05rem; height:1.05rem; border-radius:5px 5px 4px 4px; border:2px solid var(--c,#94a3b8); display:inline-block; background:#fff; }
+  .lg.lg-aisle { border-style:dashed; border-color:#f59e0b; background:#fffbeb; }
+</style>
+
+<script>
+(function () {
+  var TYPE_DEFAULT = "{{ bus.is_sleeper|yesno:'sleeper,seater' }}";
+  var data = JSON.parse(document.getElementById('layout-data').textContent);
+
+  // ---- state -------------------------------------------------------------
+  var uid = 0;
+  function deckFrom(d) {
+    var seats = ((d || {}).seats || []).map(function (s) {
+      return {
+        _uid: ++uid,
+        kind: s.is_active === false ? 'aisle' : 'seat',
+        number: String(s.number), row: +s.row, col: +s.col,
+        row_span: +s.row_span || 1, seat_type: s.seat_type || 'seater',
+        price_modifier: parseFloat(s.price_modifier) || 0,
+        is_window: !!s.is_window, is_ladies: !!s.is_ladies, is_reserved: !!s.is_reserved
+      };
+    });
+    return { seats: seats };
+  }
+  var state = { lower: deckFrom(data.decks.lower), upper: deckFrom(data.decks.upper) };
+  var dims = {};
+  function initDims(key) {
+    var maxR = 4, maxC = 4;
+    state[key].seats.forEach(function (s) {
+      maxR = Math.max(maxR, s.row + s.row_span - 1);
+      maxC = Math.max(maxC, s.col);
+    });
+    dims[key] = { rows: maxR, cols: maxC };
+  }
+  initDims('lower'); initDims('upper');
+
+  var hasUpper = state.upper.seats.length > 0;
+  var active = 'lower';
+  var sel = null;
+
+  // ---- helpers -----------------------------------------------------------
+  function allSeats() { return state.lower.seats.concat(state.upper.seats); }
+  function realSeats() { return allSeats().filter(function (s) { return s.kind !== 'aisle'; }); }
+  function nextNumber() {
+    var used = {}; realSeats().forEach(function (s) { used[s.number] = 1; });
+    var n = 1; while (used[String(n)]) n++; return String(n);
+  }
+  function seatAt(deck, r, c) {
+    return state[deck].seats.find(function (s) {
+      return s.col === c && r >= s.row && r < s.row + s.row_span;
+    });
+  }
+  function byUid(u) { return state[active].seats.find(function (s) { return s._uid === u; }); }
+  function fitsAt(seat, r, c) {
+    if (c > dims[active].cols || r < 1) return false;
+    if (r + seat.row_span - 1 > dims[active].rows) return false;
+    for (var rr = r; rr < r + seat.row_span; rr++) {
+      var o = seatAt(active, rr, c);
+      if (o && o !== seat) return false;
+    }
+    return true;
+  }
+
+  // ---- rendering ---------------------------------------------------------
+  var grid = document.getElementById('grid');
+  function render() {
+    document.getElementById('rows-count').textContent = dims[active].rows;
+    document.getElementById('cols-count').textContent = dims[active].cols;
+    renderTabs();
+    document.getElementById('upper-toggle').textContent = hasUpper ? '✕ Remove upper deck' : '+ Add upper deck';
+
+    grid.style.gridTemplateColumns = 'repeat(' + dims[active].cols + ', 3.1rem)';
+    grid.innerHTML = '';
+    for (var r = 1; r <= dims[active].rows; r++) {
+      for (var c = 1; c <= dims[active].cols; c++) {
+        var s = seatAt(active, r, c);
+        if (s) {
+          if (s.row === r) grid.appendChild(s.kind === 'aisle' ? aisleEl(s) : seatEl(s));
+        } else {
+          grid.appendChild(addEl(r, c));
+        }
+      }
+    }
+  }
+  function renderTabs() {
+    var box = document.getElementById('deck-tabs');
+    box.innerHTML = '';
+    (hasUpper ? ['lower', 'upper'] : ['lower']).forEach(function (d) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = d === 'lower' ? 'Lower deck' : 'Upper deck';
+      b.className = 'deck-tab ' + (d === active ? 'deck-tab-on' : 'deck-tab-off');
+      b.onclick = function () { active = d; sel = null; closePanel(); render(); };
+      box.appendChild(b);
+    });
+  }
+  function addEl(r, c) {
+    var el = document.createElement('div');
+    el.className = 'add-cell';
+    el.style.gridColumn = c; el.style.gridRow = r;
+    el.textContent = '+';
+    el.title = 'Click to add a seat, or drag one from the palette';
+    el.addEventListener('click', function () { addSeat(TYPE_DEFAULT, r, c); });
+    el.addEventListener('dragover', function (e) { e.preventDefault(); el.classList.add('drop-hot'); });
+    el.addEventListener('dragleave', function () { el.classList.remove('drop-hot'); });
+    el.addEventListener('drop', function (e) { e.preventDefault(); el.classList.remove('drop-hot'); handleDrop(e, r, c); });
+    return el;
+  }
+  function seatEl(s) {
+    var el = document.createElement('div');
+    el.className = 'seat-shape t-' + s.seat_type +
+      (s.seat_type === 'sleeper' ? ' is-sleeper' : '') +
+      (s.is_ladies ? ' ladies' : '') + (s.is_reserved ? ' reserved' : '') +
+      (s === sel ? ' sel' : '');
+    el.style.gridColumn = s.col;
+    el.style.gridRow = s.row + ' / span ' + s.row_span;
+    el.setAttribute('draggable', 'true');
+    var html = '';
+    if (s.is_window) html += '<span class="win">🪟</span>';
+    html += '<b>' + esc(s.number) + '</b>';
+    if (s.price_modifier) html += '<em class="price">+₹' + s.price_modifier + '</em>';
+    else html += '<em>' + (s.seat_type === 'sleeper' ? 'Sleeper' : 'Seater') + '</em>';
+    el.innerHTML = html;
+    el.onclick = function () { select(s); };
+    el.addEventListener('dragstart', function (e) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'move', uid: s._uid }));
+      e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', function () { el.classList.remove('dragging'); });
+    return el;
+  }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (m) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]; }); }
+  function aisleEl(s) {
+    var el = document.createElement('div');
+    el.className = 'aisle';
+    el.style.gridColumn = s.col; el.style.gridRow = s.row;
+    el.textContent = '⋮';
+    el.title = 'Walking aisle — click to remove';
+    el.onclick = function () { removeSeat(s); };
+    return el;
+  }
+
+  // ---- drag & drop -------------------------------------------------------
+  function handleDrop(e, r, c) {
+    var raw = e.dataTransfer.getData('text/plain'); if (!raw) return;
+    var p; try { p = JSON.parse(raw); } catch (_) { return; }
+    if (p.kind === 'new') {
+      if (p.seat_type === 'aisle') addAisle(r, c); else addSeat(p.seat_type, r, c);
+    } else if (p.kind === 'move') {
+      var s = byUid(p.uid);
+      if (s && fitsAt(s, r, c)) { s.row = r; s.col = c; render(); }
+    }
+  }
+  function addAisle(r, c) {
+    state[active].seats.push({ _uid: ++uid, kind: 'aisle', number: '', row: r, col: c, row_span: 1 });
+    sel = null; closePanel(); render();
+  }
+  function addSeat(type, r, c) {
+    var s = { _uid: ++uid, kind: 'seat', number: nextNumber(), row: r, col: c, row_span: 1,
+      seat_type: type || TYPE_DEFAULT, price_modifier: 0, is_window: false, is_ladies: false, is_reserved: false };
+    state[active].seats.push(s); select(s); render();
+  }
+
+  // ---- quick fill (pattern generator, replaces the active deck) ----------
+  function mkSeat(num, row, col, span, type) {
+    return { _uid: ++uid, kind: 'seat', number: num, row: row, col: col, row_span: span,
+      seat_type: type, price_modifier: 0, is_window: false, is_ladies: false, is_reserved: false };
+  }
+  function clampInt(v, lo, hi, dflt) {
+    v = parseInt(v, 10); if (isNaN(v)) v = dflt;
+    return Math.max(lo, Math.min(hi, v));
+  }
+  function quickFill() {
+    var left = clampInt(document.getElementById('qf-left').value, 0, 4, 2);
+    var right = clampInt(document.getElementById('qf-right').value, 0, 4, 2);
+    var rows = clampInt(document.getElementById('qf-rows').value, 1, 20, 10);
+    var type = document.getElementById('qf-type').value;
+    if (left + right < 1) { alert('Har row me kam se kam ek seat honi chahiye (Left + Right ≥ 1).'); return; }
+    if (state[active].seats.length &&
+        !confirm('Quick fill is ' + active + ' deck ki saari seats replace kar dega. Continue?')) return;
+
+    var span = type === 'sleeper' ? 2 : 1;          // sleeper berth = 2 grid rows long
+    var aisleCol = (left > 0 && right > 0) ? left + 1 : 0;
+    var cols = left + right + (aisleCol ? 1 : 0);
+    var totalRows = rows * span;
+
+    // Keep numbers unique against the *other* deck (this deck is being replaced).
+    var other = active === 'lower' ? 'upper' : 'lower';
+    var used = {};
+    state[other].seats.forEach(function (s) { if (s.kind !== 'aisle') used[s.number] = 1; });
+    var nn = 0;
+    function nextN() { do { nn++; } while (used[String(nn)]); return String(nn); }
+
+    var seats = [];
+    for (var r = 0; r < rows; r++) {
+      var gr = r * span + 1;
+      for (var i = 1; i <= left; i++) seats.push(mkSeat(nextN(), gr, i, span, type));
+      for (var j = 1; j <= right; j++) {
+        var col = (aisleCol ? aisleCol : left) + j;
+        seats.push(mkSeat(nextN(), gr, col, span, type));
+      }
+    }
+    // Continuous walkway down the middle (every grid row).
+    if (aisleCol) {
+      for (var g = 1; g <= totalRows; g++) {
+        seats.push({ _uid: ++uid, kind: 'aisle', number: '', row: g, col: aisleCol, row_span: 1 });
+      }
+    }
+    state[active].seats = seats;
+    dims[active] = { rows: totalRows, cols: cols };
+    sel = null; closePanel(); render();
+  }
+  function removeSeat(s) {
+    var arr = state[active].seats; arr.splice(arr.indexOf(s), 1);
+    if (sel === s) { sel = null; closePanel(); }
+    render();
+  }
+  document.querySelectorAll('.pal').forEach(function (item) {
+    item.addEventListener('dragstart', function (e) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'new', seat_type: item.dataset.tool }));
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+  });
+  document.getElementById('qf-generate').onclick = quickFill;
+
+  // ---- edit panel --------------------------------------------------------
+  var panel = document.getElementById('panel');
+  var F = {
+    number: document.getElementById('f-number'), type: document.getElementById('f-type'),
+    span: document.getElementById('f-span'), price: document.getElementById('f-price'),
+    window: document.getElementById('f-window'), ladies: document.getElementById('f-ladies'),
+    reserved: document.getElementById('f-reserved'),
+  };
+  function select(s) { sel = s; openPanel(); render(); }
+  function closePanel() { panel.classList.add('hidden'); }
+  function openPanel() {
+    panel.classList.remove('hidden');
+    F.number.value = sel.number; F.type.value = sel.seat_type;
+    F.span.value = sel.row_span; F.price.value = sel.price_modifier || 0;
+    F.window.checked = sel.is_window; F.ladies.checked = sel.is_ladies; F.reserved.checked = sel.is_reserved;
+  }
+  function fitsSpan(s, span) {
+    if (s.row + span - 1 > dims[active].rows) return false;
+    for (var r = s.row; r < s.row + span; r++) { var o = seatAt(active, r, s.col); if (o && o !== s) return false; }
+    return true;
+  }
+  F.number.oninput = function () { sel.number = F.number.value.trim(); render(); };
+  F.type.onchange = function () { sel.seat_type = F.type.value; render(); };
+  F.span.onchange = function () {
+    var span = +F.span.value;
+    if (!fitsSpan(sel, span)) { alert('Not enough room below this seat for that length.'); F.span.value = sel.row_span; return; }
+    sel.row_span = span; render();
+  };
+  F.price.oninput = function () { sel.price_modifier = parseFloat(F.price.value) || 0; render(); };
+  F.window.onchange = function () { sel.is_window = F.window.checked; render(); };
+  F.ladies.onchange = function () { sel.is_ladies = F.ladies.checked; if (sel.is_ladies) { sel.is_reserved = false; F.reserved.checked = false; } render(); };
+  F.reserved.onchange = function () { sel.is_reserved = F.reserved.checked; if (sel.is_reserved) { sel.is_ladies = false; F.ladies.checked = false; } render(); };
+  document.getElementById('seat-delete').onclick = function () { if (sel) removeSeat(sel); };
+
+  // ---- dimension + deck controls ----------------------------------------
+  document.querySelectorAll('.stepper button').forEach(function (b) {
+    b.onclick = function () {
+      var dim = b.dataset.dim, step = +b.dataset.step, next = dims[active][dim] + step;
+      if (next < 1 || next > 30) return;
+      if (step < 0) {
+        var max = 0;
+        state[active].seats.forEach(function (s) { max = Math.max(max, dim === 'rows' ? s.row + s.row_span - 1 : s.col); });
+        if (next < max) { alert('Remove seats in the last ' + dim.slice(0, -1) + ' first.'); return; }
+      }
+      dims[active][dim] = next; render();
+    };
+  });
+  document.getElementById('upper-toggle').onclick = function () {
+    if (hasUpper) {
+      if (state.upper.seats.length && !confirm('Remove the upper deck and all its seats?')) return;
+      state.upper.seats = []; hasUpper = false;
+      if (active === 'upper') active = 'lower';
+    } else { hasUpper = true; initDims('upper'); active = 'upper'; }
+    sel = null; closePanel(); render();
+  };
+
+  // ---- save --------------------------------------------------------------
+  document.getElementById('layout-form').addEventListener('submit', function (e) {
+    if (!realSeats().length) { e.preventDefault(); alert('Add at least one seat before saving.'); return; }
+    var seen = {}, dup = null;
+    realSeats().forEach(function (s) { if (seen[s.number]) dup = s.number; seen[s.number] = 1; });
+    if (dup) { e.preventDefault(); alert('Two seats share the label "' + dup + '". Make labels unique.'); return; }
+    function clean(arr) {
+      return arr.map(function (s) {
+        if (s.kind === 'aisle') return { row: s.row, col: s.col, row_span: 1, is_active: false };
+        return { number: s.number, row: s.row, col: s.col, row_span: s.row_span,
+          seat_type: s.seat_type, price_modifier: s.price_modifier,
+          is_window: s.is_window, is_ladies: s.is_ladies, is_reserved: s.is_reserved, is_active: true };
+      });
+    }
+    var payload = { decks: { lower: { seats: clean(state.lower.seats) } } };
+    if (hasUpper && state.upper.seats.length) payload.decks.upper = { seats: clean(state.upper.seats) };
+    document.getElementById('layout-input').value = JSON.stringify(payload);
+  });
+
+  render();
+})();
+</script>
+{% endblock %}

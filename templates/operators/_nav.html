@@ -1,0 +1,30 @@
+{% load static %}
+{% comment %}Operator sub-nav. Highlights the active section via the resolved URL name.{% endcomment %}
+<nav class="mb-6 flex flex-wrap gap-1 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-card">
+  {% with url_name=request.resolver_match.url_name %}
+  <a href="{% url 'operator_dashboard' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if url_name == 'operator_dashboard' %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    Dashboard
+  </a>
+  <a href="{% url 'bus_list' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if url_name == 'bus_list' or url_name == 'bus_add' or url_name == 'seat_editor' %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/><path d="M4 9h16"/></svg>
+    My Buses
+  </a>
+  <a href="{% url 'route_list' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if 'route' in url_name or url_name == 'stop_delete' %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 19h6a3 3 0 0 0 3-3V8"/></svg>
+    Routes
+  </a>
+  <a href="{% url 'schedule_list' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if 'schedule' in url_name %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4M7 2v4M3 9h18"/><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 14l2 2 4-4"/></svg>
+    Schedules
+  </a>
+  <a href="{% url 'trip_list' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if 'trip' in url_name %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a3 3 0 0 1 0 8 1 1 0 0 0 0 0v-2h18v2a3 3 0 0 1 0-8V6H3Z"/></svg>
+    Trips
+  </a>
+  <a href="{% url 'operator_earnings' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if url_name == 'operator_earnings' %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2 0 0 0-2.5-1.5c-1.4 0-2.5.7-2.5 2s1.1 1.7 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2A2.5 2 0 0 1 9.5 16"/><path d="M12 6v1.5M12 16.5V18"/></svg>
+    Earnings
+  </a>
+  {% endwith %}
+</nav>

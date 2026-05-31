@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Schedule trip — BusGo{% endblock %}
+
+{% block content %}
+{% include "operators/_nav.html" %}
+
+<div class="mx-auto max-w-lg">
+  <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card">
+    <div class="bg-gradient-to-r from-brand-700 to-brand px-6 py-6 text-white">
+      <h1 class="text-xl font-bold">Schedule a trip</h1>
+      <p class="mt-1 text-sm text-white/80">Pick a bus and route and set the times. The fare comes from the route. It goes live for passengers immediately.</p>
+    </div>
+    <form method="post" class="space-y-4 p-6">
+      {% csrf_token %}
+      {% for f in form %}
+        <div>
+          <label class="label">{{ f.label }}</label>
+          {{ f }}
+          {% for e in f.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="border-t border-slate-100 pt-4">
+        <button class="btn-primary">Schedule trip</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

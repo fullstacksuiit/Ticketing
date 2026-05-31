@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Segment fares — BusGo{% endblock %}
+
+{% block content %}
+{% include "operators/_nav.html" %}
+
+<div class="mx-auto max-w-2xl">
+  <div class="mb-1 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-slate-900">Segment fares</h1>
+    <a href="{% url 'trip_list' %}" class="text-sm font-medium text-slate-500 hover:text-slate-700">← Back to trips</a>
+  </div>
+  <p class="mb-6 text-sm text-slate-500">
+    {{ trip.route }} · {{ trip.departure|date:"d M, H:i" }} · {{ trip.bus.name }}
+    <br>Price each boarding → dropping leg. Blank rows keep the flat fare of ₹{{ trip.fare }}.
+  </p>
+
+  <form method="post" class="card divide-y divide-slate-100 overflow-hidden">
+    {% csrf_token %}
+    {% for row in rows %}
+      <div class="flex items-center gap-4 p-4">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-slate-800">{{ row.from_city }} <span class="text-slate-400">→</span> {{ row.to_city }}</p>
+          {% if row.is_default %}<p class="text-xs text-slate-400">Using flat fare</p>{% else %}<p class="text-xs font-medium text-emerald-600">Custom fare</p>{% endif %}
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-slate-400">₹</span>
+          <input type="number" step="0.01" min="0" name="fare_{{ row.i }}" value="{{ row.fare }}" class="input w-28">
+        </div>
+      </div>
+    {% endfor %}
+    <div class="p-4">
+      <button class="btn-primary">Save fares</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
