@@ -5,7 +5,6 @@ drag & drop seat editor."""
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import ProtectedError
 
 from .models import Bus, Seat
 
@@ -84,7 +83,7 @@ def _aisle_from_spec(bus, deck, spec, label):
 
 @transaction.atomic
 def save_layout(bus, layout):
-    """Replace a bus's entire seat map from a layout designed in the editor.
+    """Save a bus's seat map from a layout designed in the editor.
 
     `layout` is the parsed JSON payload:
         {"decks": {"lower": {"seats": [<seat spec>, ...]},
@@ -92,6 +91,13 @@ def save_layout(bus, layout):
     Each seat spec has number, row, col, row_span, seat_type, price_modifier,
     is_window, is_ladies, is_reserved. Seat numbers must be unique across the
     whole bus. `bus.has_upper_deck` is set from whether an upper deck has seats.
+
+    The layout is reconciled by seat label rather than rebuilt wholesale: a seat
+    whose label survives the edit keeps its database row (and any bookings linked
+    to it), and is updated in place. A seat the operator removes (or renames) is
+    deleted; because BookedSeat.seat is SET_NULL, any booking on it is detached
+    (kept, but with no seat) rather than blocking the edit.
+
     Raises LayoutError (rolling back) on any invalid input."""
     decks = (layout or {}).get("decks") or {}
     if not isinstance(decks, dict):
@@ -137,14 +143,31 @@ def save_layout(bus, layout):
     if real_seat_count == 0:
         raise LayoutError("A bus needs at least one seat.")
 
-    try:
-        bus.seats.all().delete()
-    except ProtectedError:
-        raise LayoutError(
-            "Some seats on this bus are already booked, so the layout can't be "
-            "rebuilt. Edits to a booked bus aren't supported yet."
-        )
-    Seat.objects.bulk_create(new_seats)
+    # Reconcile against the current seats by label. Seats whose label survives
+    # the edit keep their row (and bookings) and are updated in place; removed
+    # ones are deleted (SET_NULL detaches any booking); new ones are created.
+    existing = {s.seat_number: s for s in bus.seats.all()}
+    new_numbers = {s.seat_number for s in new_seats}
+    bus.seats.exclude(seat_number__in=new_numbers).delete()
+
+    to_create = []
+    for seat in new_seats:
+        current = existing.get(seat.seat_number)
+        if current is None:
+            to_create.append(seat)
+            continue
+        current.deck = seat.deck
+        current.row = seat.row
+        current.col = seat.col
+        current.row_span = seat.row_span
+        current.seat_type = seat.seat_type
+        current.price_modifier = seat.price_modifier
+        current.is_window = seat.is_window
+        current.is_ladies = seat.is_ladies
+        current.is_reserved = seat.is_reserved
+        current.is_active = seat.is_active
+        current.save()
+    Seat.objects.bulk_create(to_create)
 
     bus.has_upper_deck = upper_has_seats
     bus.save(update_fields=["has_upper_deck"])

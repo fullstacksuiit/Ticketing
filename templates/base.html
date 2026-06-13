@@ -44,14 +44,24 @@
 
   <style type="text/tailwindcss">
     @layer base {
-      body { @apply font-sans antialiased; }
-      h1, h2, h3 { @apply font-display tracking-tight; }
+      html { @apply scroll-smooth; }
+      body { @apply font-sans antialiased; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+      h1, h2, h3 { @apply font-display tracking-tight; text-wrap: balance; }
+      p { text-wrap: pretty; }
+      /* Brand-tinted text selection */
+      ::selection { background-color: rgba(225, 29, 72, .14); color: #881337; }
+      /* Slim, premium scrollbars */
+      * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+      ::-webkit-scrollbar { width: 9px; height: 9px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+      ::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
     }
     @layer components {
       /* Buttons */
-      .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-dark hover:shadow-md active:scale-[.98] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed; }
-      .btn-success { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-emerald-700 hover:shadow-md active:scale-[.98] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed; }
-      .btn-outline { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus:outline-none; }
+      .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-brand-dark hover:shadow-md active:scale-[.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed; }
+      .btn-success { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white shadow-sm transition-all duration-150 hover:bg-emerald-700 hover:shadow-md active:scale-[.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed; }
+      .btn-outline { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2; }
 
       /* Surfaces */
       .card { @apply rounded-2xl border border-slate-100 bg-white shadow-card; }
@@ -68,12 +78,29 @@
       .badge-amber { @apply inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700; }
       .badge-brand { @apply inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand; }
 
+      /* Quick-pick date chips */
+      .datechip { @apply inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-brand hover:text-brand; }
+      .datechip-active { @apply border-brand bg-brand/10 text-brand; }
+
       /* Nav links in header */
-      .nav-link { @apply rounded-lg px-3 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white; }
+      .nav-link { @apply rounded-lg px-3 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60; }
     }
   </style>
 </head>
 <body class="flex min-h-screen flex-col bg-slate-50 text-slate-800">
+
+  <!-- Top promo bar (dismissible, remembered locally) -->
+  <div id="promo-bar" class="relative bg-gradient-to-r from-amber-200 via-rose-200 to-rose-300 text-slate-900">
+    <div class="mx-auto flex max-w-6xl items-center justify-center gap-2.5 px-10 py-2 text-center text-sm">
+      <svg class="hidden h-5 w-5 shrink-0 text-brand sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+      <span><span class="font-bold">Get 10% off</span> your first booking — use code <span class="font-bold tracking-wide text-brand">BUSGO10</span></span>
+      <a href="{% url 'signup' %}" class="ml-1 hidden rounded-full bg-white px-3 py-1 text-xs font-bold text-brand shadow-sm transition hover:bg-amber-50 sm:inline-flex">Sign up &amp; save</a>
+      <button type="button" data-promo-dismiss aria-label="Dismiss offer"
+              class="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-600 transition hover:bg-white/60 hover:text-slate-900">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+  </div>
 
   <header class="sticky top-0 z-40 bg-gradient-to-r from-brand-800 via-brand-700 to-brand text-white shadow-lg shadow-brand-900/20">
     <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
@@ -88,7 +115,7 @@
       <div class="flex items-center gap-1 sm:gap-2">
         {% if user.is_authenticated %}
           {% if user.is_staff %}
-            <a href="{% url 'platform_revenue' %}" class="nav-link hidden sm:inline-flex">Revenue</a>
+            <a href="{% url 'admin_dashboard' %}" class="nav-link hidden sm:inline-flex">Admin</a>
           {% endif %}
           {% if user.is_operator %}
             <a href="{% url 'operator_dashboard' %}" class="nav-link">Dashboard</a>
@@ -264,6 +291,89 @@
         }
         document.querySelectorAll('[data-combobox]').forEach(function (root) {
           initCombobox(root, options, priority);
+        });
+      });
+    })();
+
+    // Friendly date field: blocks past dates, opens the native calendar on a
+    // single click anywhere in the field, and offers quick chips (Today /
+    // Tomorrow / This weekend) so most picks are one tap.
+    (function () {
+      function iso(d) {
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return d.getFullYear() + '-' + m + '-' + day;
+      }
+      function initDateField(root) {
+        var input = root.querySelector('[data-datefield-input]');
+        if (!input) return;
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        input.min = iso(today);
+        if (!input.value) input.value = iso(today); // default to today
+
+        function openPicker() {
+          if (typeof input.showPicker === 'function') {
+            try { input.showPicker(); } catch (e) { /* not allowed yet */ }
+          }
+        }
+        input.addEventListener('focus', openPicker);
+        input.addEventListener('click', openPicker);
+
+        var chips = root.querySelectorAll('[data-datefield-quick]');
+        function sync() {
+          chips.forEach(function (chip) {
+            chip.classList.toggle('datechip-active', chip.dataset.dateValue === input.value);
+          });
+        }
+        chips.forEach(function (chip) {
+          var spec = chip.getAttribute('data-datefield-quick');
+          var d = new Date(today);
+          if (spec === 'weekend') {
+            d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7)); // next Saturday
+          } else {
+            d.setDate(d.getDate() + parseInt(spec, 10));
+          }
+          chip.dataset.dateValue = iso(d);
+          chip.addEventListener('click', function () {
+            input.value = chip.dataset.dateValue;
+            sync();
+          });
+        });
+        input.addEventListener('change', sync);
+        sync();
+      }
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-datefield]').forEach(initDateField);
+      });
+    })();
+
+    // Top promo bar: dismiss and remember the choice so it stays hidden.
+    (function () {
+      document.addEventListener('DOMContentLoaded', function () {
+        var bar = document.getElementById('promo-bar');
+        if (!bar) return;
+        try { if (localStorage.getItem('promoDismissed') === '1') { bar.remove(); return; } } catch (e) {}
+        var btn = bar.querySelector('[data-promo-dismiss]');
+        if (btn) btn.addEventListener('click', function () {
+          bar.remove();
+          try { localStorage.setItem('promoDismissed', '1'); } catch (e) {}
+        });
+      });
+    })();
+
+    // Swap origin/destination: swaps the [name="from"] and [name="to"] values
+    // within the button's own form.
+    (function () {
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-swap]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var form = btn.closest('form');
+            if (!form) return;
+            var a = form.querySelector('[name="from"]');
+            var b = form.querySelector('[name="to"]');
+            if (a && b) { var t = a.value; a.value = b.value; b.value = t; }
+          });
         });
       });
     })();

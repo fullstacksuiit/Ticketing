@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Photos — {{ bus.name }} — BusGo{% endblock %}
+
+{% block content %}
+{% include "operators/_nav.html" %}
+
+<div class="mb-5 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">{{ bus.name }} · Photos</h1>
+    <p class="text-sm text-slate-500">Passengers see these before booking. The first photo is the cover.</p>
+  </div>
+  <a href="{% url 'bus_list' %}" class="text-sm font-semibold text-brand hover:underline">← Back to buses</a>
+</div>
+
+<!-- Upload -->
+<form method="post" action="{% url 'bus_photos' bus.id %}" enctype="multipart/form-data" class="card mb-6 p-5">
+  {% csrf_token %}
+  <label class="label">Add photos</label>
+  <input type="file" name="images" accept="image/*" multiple
+         class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand hover:file:bg-brand/20">
+  <button class="btn-primary mt-4 px-4 py-2 text-sm">Upload</button>
+</form>
+
+{% if bus.photos.all %}
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    {% for photo in bus.photos.all %}
+      <div class="card overflow-hidden p-0">
+        <div class="relative aspect-[4/3] bg-slate-100">
+          <img src="{{ photo.image.url }}" alt="{{ photo.caption }}" class="h-full w-full object-cover">
+          {% if forloop.first %}<span class="badge-brand absolute left-2 top-2">Cover</span>{% endif %}
+        </div>
+        <form method="post" action="{% url 'bus_photos' bus.id %}" class="p-2">
+          {% csrf_token %}
+          <input type="hidden" name="delete" value="{{ photo.id }}">
+          <button class="w-full rounded-lg px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50">Remove</button>
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card flex flex-col items-center gap-3 p-12 text-center">
+    <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-3xl">📷</div>
+    <p class="font-semibold text-slate-700">No photos yet</p>
+    <p class="text-sm text-slate-500">Upload a few shots of the bus exterior, interior and seats.</p>
+  </div>
+{% endif %}
+{% endblock %}

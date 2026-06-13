@@ -2,7 +2,10 @@
 {% block title %}My Bookings — BusGo{% endblock %}
 
 {% block content %}
-<h1 class="mb-5 text-2xl font-bold text-slate-900">My Bookings</h1>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">My Bookings</h1>
+  <p class="mt-1 text-sm text-slate-500">All your trips, tickets and refunds in one place.</p>
+</div>
 
 {% if bookings %}
   <div class="space-y-3">
@@ -22,6 +25,7 @@
           <div class="text-right">
             <p class="text-lg font-extrabold text-slate-900">₹{{ b.total_amount }}</p>
             <span class="{% if b.status == 'confirmed' %}badge-green{% elif b.status == 'cancelled' %}badge-red{% else %}badge-amber{% endif %} mt-1">{{ b.get_status_display }}</span>
+            {% if b.status == 'cancelled' and b.refund %}<p class="mt-1 text-xs font-medium text-emerald-600">↩ ₹{{ b.refund.amount }} refunded</p>{% endif %}
           </div>
         </div>
       </a>

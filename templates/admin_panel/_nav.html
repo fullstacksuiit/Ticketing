@@ -1,0 +1,31 @@
+{% comment %}Admin panel sub-nav. Highlights the active model via the resolved
+URL kwargs. Driven by registry.nav_groups().{% endcomment %}
+{% with kw=request.resolver_match.kwargs url_name=request.resolver_match.url_name %}
+<div class="mb-6 rounded-2xl border border-slate-100 bg-white p-2 shadow-card">
+  <div class="flex flex-wrap items-center gap-1">
+    <a href="{% url 'admin_dashboard' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if url_name == 'admin_dashboard' %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="{% url 'admin_revenue' %}" class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition {% if url_name == 'admin_revenue' %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+      Revenue
+    </a>
+  </div>
+
+  <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-2">
+    {% for group in nav_groups %}
+      <div class="flex flex-wrap items-center gap-1">
+        <span class="px-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ group.title }}</span>
+        {% for item in group.items %}
+          <a href="{% url 'admin_model_list' item.app_label item.model_name %}"
+             class="rounded-lg px-3 py-1.5 text-sm font-medium transition {% if kw.app_label == item.app_label and kw.model_name == item.model_name %}bg-brand text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+            {{ item.label }}
+            {% if item.app_label == 'operators' and pending_ops %}<span class="ml-1 rounded-full bg-amber-400 px-1.5 text-[11px] font-bold text-amber-950">{{ pending_ops }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endwith %}

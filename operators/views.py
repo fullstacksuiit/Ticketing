@@ -77,28 +77,6 @@ def _is_platform_admin(user):
 
 @user_passes_test(_is_platform_admin)
 def platform_revenue(request):
-    """Owner's view: total platform commission earned, with a per-operator
-    breakdown."""
-    from payments.models import Commission
-
-    totals = Commission.objects.aggregate(
-        gross=Sum("gross_amount"),
-        commission=Sum("commission_amount"),
-        payout=Sum("payout_amount"),
-        bookings=Count("id"),
-    )
-    by_operator = (
-        Operator.objects.annotate(
-            gross=Sum("commissions__gross_amount"),
-            commission=Sum("commissions__commission_amount"),
-            payout=Sum("commissions__payout_amount"),
-            bookings=Count("commissions"),
-        )
-        .filter(bookings__gt=0)
-        .order_by("-commission")
-    )
-    return render(
-        request,
-        "operators/platform_revenue.html",
-        {"totals": totals, "by_operator": by_operator},
-    )
+    """Kept for backwards-compatible links — the revenue report now lives in
+    the admin panel at /manage/revenue/."""
+    return redirect("admin_revenue")

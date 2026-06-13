@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Platform revenue · Admin · BusGo{% endblock %}
+
+{% block content %}
+{% include "admin_panel/_nav.html" %}
+
+<h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Platform revenue</h1>
+<p class="mb-6 mt-1 text-sm text-slate-500">Commission earned across all operators.</p>
+
+<div class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <div class="card p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total bookings</p>
+    <p class="mt-1 text-2xl font-extrabold text-slate-900">{{ totals.bookings|default:0 }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Gross sales (GMV)</p>
+    <p class="mt-1 text-2xl font-extrabold text-slate-900">₹{{ totals.gross|default:0 }}</p>
+  </div>
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 p-5 text-white shadow-float">
+    <div class="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/10 blur-xl"></div>
+    <p class="relative text-xs font-medium uppercase tracking-wide text-white/80">Commission earned (yours)</p>
+    <p class="relative mt-1 text-2xl font-extrabold">₹{{ totals.commission|default:0 }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Paid to operators</p>
+    <p class="mt-1 text-2xl font-extrabold text-slate-900">₹{{ totals.payout|default:0 }}</p>
+  </div>
+</div>
+
+<h2 class="mb-3 font-semibold text-slate-800">By operator</h2>
+<div class="card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase text-slate-400">
+        <tr>
+          <th class="px-4 py-3">Operator</th>
+          <th class="px-4 py-3 text-right">Bookings</th>
+          <th class="px-4 py-3 text-right">Gross</th>
+          <th class="px-4 py-3 text-right">Your commission</th>
+          <th class="px-4 py-3 text-right">Operator payout</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for op in by_operator %}
+          <tr class="transition hover:bg-slate-50">
+            <td class="px-4 py-3 font-semibold text-slate-900">
+              <a href="{% url 'admin_model_edit' 'operators' 'operator' op.pk %}" class="hover:text-brand">{{ op.company_name }}</a>
+              {% if op.is_self_operated %}<span class="badge-amber ml-1">own</span>{% endif %}
+            </td>
+            <td class="px-4 py-3 text-right text-slate-600">{{ op.bookings }}</td>
+            <td class="px-4 py-3 text-right text-slate-700">₹{{ op.gross }}</td>
+            <td class="px-4 py-3 text-right font-semibold text-brand">₹{{ op.commission }}</td>
+            <td class="px-4 py-3 text-right text-emerald-600">₹{{ op.payout }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="px-4 py-10 text-center text-slate-500">No bookings yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

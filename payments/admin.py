@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Commission, Payment
+from .models import Commission, Payment, Refund
 
 
 @admin.register(Payment)
@@ -23,3 +23,10 @@ class CommissionAdmin(admin.ModelAdmin):
     )
     list_filter = ("operator",)
     search_fields = ("booking__pnr",)
+
+
+@admin.register(Refund)
+class RefundAdmin(admin.ModelAdmin):
+    list_display = ("booking", "amount", "percent", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("booking__pnr", "gateway_ref")

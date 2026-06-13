@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ config.verbose_name|lower }} · Admin · BusGo{% endblock %}
+
+{% block content %}
+{% include "admin_panel/_nav.html" %}
+
+<div class="mx-auto max-w-lg">
+  <div class="card p-6">
+    <div class="flex items-start gap-3">
+      <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+      </span>
+      <div>
+        <h1 class="text-xl font-bold text-slate-900">Delete this {{ config.verbose_name|lower }}?</h1>
+        <p class="mt-1 text-sm text-slate-600">You're about to permanently delete <strong>{{ object }}</strong>. This can't be undone, and related records may be removed too.</p>
+      </div>
+    </div>
+
+    <form method="post" class="mt-6 flex items-center gap-3">
+      {% csrf_token %}
+      <button class="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-rose-700 active:scale-[.98]">Yes, delete</button>
+      <a href="{% url 'admin_model_edit' config.app_label config.model_name object.pk %}" class="btn-outline px-5 py-2.5 text-sm">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

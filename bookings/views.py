@@ -13,7 +13,27 @@ from routes.models import Stop, Trip
 
 from .cities import INDIAN_CITIES, PRIORITY_CITIES
 from .models import Booking
-from .services import SeatUnavailable, booked_seat_ids, create_booking
+from .refunds import quote_refund, refund_schedule
+from .services import (
+    CancellationError,
+    RescheduleError,
+    SeatUnavailable,
+    cancel_booking as do_cancel_booking,
+    create_booking,
+    hold_seats,
+    match_seat_numbers,
+    reschedule_booking as do_reschedule_booking,
+    reschedule_eligibility,
+    unavailable_seat_ids,
+)
+
+
+def _session_key(request):
+    """The current browser session key, identifying a customer's seat holds.
+    Force-create the session if it doesn't exist yet (e.g. first-time guests)."""
+    if not request.session.session_key:
+        request.session.create()
+    return request.session.session_key
 
 
 def _resolve_segment(trip, src, dst):
@@ -126,16 +146,17 @@ def search(request):
     )
 
 
-def _seat_grid(trip, base_fare):
+def _seat_grid(trip, base_fare, unavailable):
     """Seats grouped by deck for CSS-grid rendering. Each seat is annotated
     with its trip fare (the segment base fare plus its premium) and whether
-    it's booked. Each deck also carries its column count so the template can
-    lay out a grid that honours free seat placement and sleeper row-spans."""
-    taken = booked_seat_ids(trip)
+    it's unavailable — booked outright or held by another customer at checkout,
+    both rendered the same (gray, non-clickable). Each deck also carries its
+    column count so the template can lay out a grid that honours free seat
+    placement and sleeper row-spans."""
     by_deck = defaultdict(list)
     cols = defaultdict(int)
     for seat in trip.bus.seats.filter(is_active=True):
-        seat.is_booked = seat.id in taken
+        seat.is_booked = seat.id in unavailable
         seat.trip_fare = seat.fare_for(base_fare)
         by_deck[seat.deck].append(seat)
         cols[seat.deck] = max(cols[seat.deck], seat.col)
@@ -157,6 +178,7 @@ def trip_seats(request, trip_id):
         trip, getter.get("from", ""), getter.get("to", "")
     )
     base_fare = trip.fare_for_segment(from_city, to_city)
+    session_key = _session_key(request)
 
     if request.method == "POST":
         seat_ids = request.POST.getlist("seats")
@@ -164,8 +186,9 @@ def trip_seats(request, trip_id):
             messages.error(request, "Please select at least one seat.")
             return redirect("trip_seats", trip_id=trip.id)
         # Re-check availability before showing the passenger form. Reserved
-        # seats are operator-held and never bookable by the public.
-        taken = booked_seat_ids(trip)
+        # seats are operator-held and never bookable by the public; seats held
+        # by another customer at checkout are unavailable too (ours excluded).
+        taken = unavailable_seat_ids(trip, exclude_session=session_key)
         chosen = list(
             trip.bus.seats.filter(
                 id__in=seat_ids, is_active=True, is_reserved=False
@@ -173,6 +196,12 @@ def trip_seats(request, trip_id):
         )
         if len(chosen) != len(seat_ids):
             messages.error(request, "Some seats are no longer available. Please pick again.")
+            return redirect("trip_seats", trip_id=trip.id)
+        # Lock the seats for this customer while they fill in details.
+        try:
+            hold_expires_at = hold_seats(trip, [s.id for s in chosen], session_key)
+        except SeatUnavailable as e:
+            messages.error(request, str(e))
             return redirect("trip_seats", trip_id=trip.id)
         total = Decimal("0")
         for seat in chosen:
@@ -213,18 +242,38 @@ def trip_seats(request, trip_id):
                 "seat_premiums": {
                     str(seat.id): str(seat.price_modifier) for seat in chosen
                 },
+                "hold_expires_ms": int(hold_expires_at.timestamp() * 1000),
             },
         )
+
+    # Info-panel data (boarding/dropping points along the booked segment, the
+    # full route, and the cancellation policy as dated windows) so the seat page
+    # can show everything a passenger wants before committing.
+    stages = trip.route.stages
+    i = stages.index(from_city) if from_city in stages else 0
+    j = stages.index(to_city) if to_city in stages else len(stages) - 1
+    if i >= j:
+        i, j = 0, len(stages) - 1
 
     return render(
         request,
         "bookings/seat_map.html",
         {
             "trip": trip,
-            "decks": _seat_grid(trip, base_fare),
+            "decks": _seat_grid(
+                trip, base_fare, unavailable_seat_ids(trip, exclude_session=session_key)
+            ),
             "from_city": from_city,
             "to_city": to_city,
             "base_fare": base_fare,
+            "boarding": _point_groups(
+                trip, (Stop.Kind.BOARDING, Stop.Kind.VIA), stages[i:j]
+            ),
+            "dropping": _point_groups(
+                trip, (Stop.Kind.DROPPING, Stop.Kind.VIA), stages[i + 1 : j + 1]
+            ),
+            "route_stages": stages,
+            "refund_schedule": refund_schedule(trip.departure),
         },
     )
 
@@ -289,6 +338,7 @@ def trip_book(request, trip_id):
             to_city=to_city,
             boarding_city=boarding_city,
             dropping_city=dropping_city,
+            session_key=_session_key(request),
         )
     except SeatUnavailable as e:
         messages.error(request, str(e))
@@ -312,10 +362,109 @@ def _booking_for_request(request, pnr):
     return booking
 
 
+def _ticket_context(booking):
+    """Context for the ticket page: the booking, a live refund quote so the
+    template can offer cancellation and show what's refundable right now,
+    whether the booking is still eligible to be rescheduled, and whether the
+    passenger can now leave a verified review (or already has)."""
+    from reviews.models import can_review
+
+    can_reschedule, _ = reschedule_eligibility(booking)
+    return {
+        "booking": booking,
+        "quote": quote_refund(booking),
+        "can_reschedule": can_reschedule,
+        "can_review": can_review(booking)[0],
+        "review": getattr(booking, "review", None),
+    }
+
+
 def ticket(request, pnr):
     """Viewable by PNR, subject to the access rules in `_booking_for_request`."""
     booking = _booking_for_request(request, pnr)
-    return render(request, "bookings/ticket.html", {"booking": booking})
+    return render(request, "bookings/ticket.html", _ticket_context(booking))
+
+
+def cancel_booking(request, pnr):
+    """Cancel a booking and refund per the time-based policy. GET shows the
+    refund breakdown to confirm; POST performs the (irreversible) cancellation.
+    Access matches viewing the ticket — owner, staff, or guest-by-PNR."""
+    booking = _booking_for_request(request, pnr)
+    quote = quote_refund(booking)
+
+    if request.method == "POST":
+        try:
+            quote = do_cancel_booking(booking)
+        except CancellationError as e:
+            messages.error(request, str(e))
+            return redirect("ticket", pnr=booking.pnr)
+        messages.success(
+            request, f"Booking cancelled — ₹{quote.amount} will be refunded."
+        )
+        return redirect("ticket", pnr=booking.pnr)
+
+    if not quote.cancellable:
+        messages.error(request, quote.reason)
+        return redirect("ticket", pnr=booking.pnr)
+    return render(
+        request, "bookings/cancel_confirm.html", {"booking": booking, "quote": quote}
+    )
+
+
+def reschedule(request, pnr):
+    """Move a booking to another departure on the same route, keeping the same
+    seats and price. GET lists eligible future departures (flagging any where
+    the seats can't be placed); POST performs the move. Access matches viewing
+    the ticket — owner, staff, or guest-by-PNR."""
+    booking = _booking_for_request(request, pnr)
+    eligible, reason = reschedule_eligibility(booking)
+    if not eligible:
+        messages.error(request, reason)
+        return redirect("ticket", pnr=booking.pnr)
+
+    seat_numbers = [
+        bs.seat.seat_number
+        for bs in booking.booked_seats.select_related("seat")
+        if bs.seat
+    ]
+
+    if request.method == "POST":
+        new_trip = get_object_or_404(
+            Trip, id=request.POST.get("trip_id"), route=booking.trip.route
+        )
+        try:
+            do_reschedule_booking(booking, new_trip=new_trip)
+        except RescheduleError as e:
+            messages.error(request, str(e))
+            return redirect("reschedule", pnr=booking.pnr)
+        messages.success(
+            request, "Done — your booking has been moved to the new departure."
+        )
+        return redirect("ticket", pnr=booking.pnr)
+
+    candidates = (
+        Trip.objects.filter(
+            route=booking.trip.route,
+            status=Trip.Status.SCHEDULED,
+            departure__gt=timezone.now(),
+        )
+        .exclude(id=booking.trip_id)
+        .select_related("bus")
+        .order_by("departure")
+    )
+    options = [
+        {"trip": t, "available": match_seat_numbers(t, seat_numbers) is not None}
+        for t in candidates
+    ]
+    return render(
+        request,
+        "bookings/reschedule.html",
+        {
+            "booking": booking,
+            "options": options,
+            "seat_numbers": ", ".join(seat_numbers),
+        },
+    )
 
 
 def ticket_pdf(request, pnr):
@@ -331,7 +480,9 @@ def ticket_pdf(request, pnr):
 
 @login_required
 def my_bookings(request):
-    bookings = request.user.bookings.select_related("trip", "trip__route").all()
+    bookings = request.user.bookings.select_related(
+        "trip", "trip__route", "refund"
+    ).all()
     return render(request, "bookings/my_bookings.html", {"bookings": bookings})
 
 
@@ -344,11 +495,13 @@ def find_booking(request):
         pnr = request.POST.get("pnr", "").strip().upper()
         email = request.POST.get("email", "").strip()
         booking = (
-            Booking.objects.select_related("trip", "trip__bus", "trip__route")
+            Booking.objects.select_related(
+                "trip", "trip__bus", "trip__bus__operator", "trip__route"
+            )
             .filter(pnr=pnr, contact_email__iexact=email)
             .first()
         )
         if booking:
-            return render(request, "bookings/ticket.html", {"booking": booking})
+            return render(request, "bookings/ticket.html", _ticket_context(booking))
         error = "No booking found for that PNR and email. Please check and try again."
     return render(request, "bookings/find_booking.html", {"error": error})

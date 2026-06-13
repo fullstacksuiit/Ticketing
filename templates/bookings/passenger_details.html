@@ -7,6 +7,13 @@
   <p class="mt-1 text-sm text-slate-500">{{ from_city }} → {{ to_city }} · {{ trip.departure|date:"d M, H:i" }} · {{ trip.bus.operator.company_name }}</p>
 </div>
 
+<!-- Seat-hold countdown: seats are locked for the customer until this lapses. -->
+<div data-hold class="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+  <span>⏳</span>
+  <span data-hold-live>Your seats are held for <strong><span data-hold-clock>--:--</span></strong>. Please complete your booking before the timer runs out.</span>
+  <span data-hold-expired class="hidden">Your hold has expired — <a href="{% url 'trip_seats' trip.id %}?from={{ from_city|urlencode }}&amp;to={{ to_city|urlencode }}" class="font-semibold underline">pick your seats again</a>.</span>
+</div>
+
 {% if not user.is_authenticated %}
   <div class="mb-5 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
     <span>ℹ️</span>
@@ -102,6 +109,39 @@
 
 {{ fare_map|json_script:"fare-map" }}
 {{ seat_premiums|json_script:"seat-premiums" }}
+{{ hold_expires_ms|json_script:"hold-expires" }}
+<script>
+  // Seat-hold countdown. At zero, disable Pay and surface the expiry notice;
+  // the server re-validates on submit regardless, this is the friendly warning.
+  (function () {
+    var expiresAt = JSON.parse(document.getElementById('hold-expires').textContent);
+    var clockEl = document.querySelector('[data-hold-clock]');
+    var liveEl = document.querySelector('[data-hold-live]');
+    var expiredEl = document.querySelector('[data-hold-expired]');
+    var bannerEl = document.querySelector('[data-hold]');
+    var payEl = document.querySelector('[data-pay]');
+    if (!expiresAt || !clockEl) return;
+
+    function expire() {
+      window.__seatHoldExpired = true;
+      if (payEl) { payEl.disabled = true; payEl.classList.add('opacity-50', 'cursor-not-allowed'); }
+      if (liveEl) liveEl.classList.add('hidden');
+      if (expiredEl) expiredEl.classList.remove('hidden');
+      if (bannerEl) {
+        bannerEl.classList.remove('border-amber-200', 'bg-amber-50', 'text-amber-900');
+        bannerEl.classList.add('border-rose-200', 'bg-rose-50', 'text-rose-900');
+      }
+    }
+    function tick() {
+      var remaining = Math.round((expiresAt - Date.now()) / 1000);
+      if (remaining <= 0) { clockEl.textContent = '0:00'; expire(); return; }
+      var m = Math.floor(remaining / 60), s = remaining % 60;
+      clockEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+      setTimeout(tick, 1000);
+    }
+    tick();
+  })();
+</script>
 <script>
   // Reprice live as the passenger changes boarding/dropping city: fare =
   // segment base fare + each seat's premium. Server re-validates on submit.
@@ -139,7 +179,10 @@
       labelEl.textContent = '· ' + from + ' → ' + to;
       totalEl.textContent = total.toFixed(2);
       payEl.textContent = 'Pay ₹' + total.toFixed(2);
-      payEl.disabled = false; payEl.classList.remove('opacity-50', 'cursor-not-allowed');
+      // Don't revive the Pay button if the seat hold has already lapsed.
+      if (!window.__seatHoldExpired) {
+        payEl.disabled = false; payEl.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
     }
     boarding.addEventListener('change', reprice);
     dropping.addEventListener('change', reprice);

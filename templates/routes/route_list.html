@@ -4,8 +4,11 @@
 {% block content %}
 {% include "operators/_nav.html" %}
 
-<div class="mb-5 flex items-center justify-between">
-  <h1 class="text-2xl font-bold text-slate-900">Routes</h1>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Routes</h1>
+    <p class="mt-1 text-sm text-slate-500">Source, destination and the stops in between.</p>
+  </div>
   <a href="{% url 'route_add' %}" class="btn-primary px-4 py-2 text-sm">+ Add route</a>
 </div>
 

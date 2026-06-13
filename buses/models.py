@@ -72,6 +72,38 @@ class Bus(models.Model):
             out.append("Blanket")
         return out
 
+    @property
+    def cover_photo(self):
+        """The first gallery photo, shown as the bus's thumbnail."""
+        return self.photos.first()
+
+    @property
+    def rating(self):
+        """Average passenger rating and review count for this bus, computed
+        lazily so the buses app stays independent of the reviews app."""
+        from reviews.models import rating_for
+
+        return rating_for(bus=self)
+
+
+class BusPhoto(models.Model):
+    """A photo of a bus, uploaded by its operator. Buses have a small gallery
+    (exterior, interior, seats) shown to passengers before they book."""
+
+    bus = models.ForeignKey(Bus, on_delete=models.CASCADE, related_name="photos")
+    image = models.ImageField(upload_to="bus_photos/")
+    caption = models.CharField(max_length=120, blank=True)
+    sort_order = models.PositiveSmallIntegerField(
+        default=0, help_text="Lower numbers show first; the first is the cover."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    def __str__(self):
+        return f"{self.bus.name} photo #{self.pk}"
+
 
 class Seat(models.Model):
     """One seat (or sleeper berth) placed freely on a deck grid. The operator

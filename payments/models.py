@@ -50,3 +50,30 @@ class Commission(models.Model):
 
     def __str__(self):
         return f"{self.booking.pnr} · platform ₹{self.commission_amount} / operator ₹{self.payout_amount}"
+
+
+class Refund(models.Model):
+    """Refund for a cancelled booking. Like Payment, the gateway is a dummy that
+    always settles immediately; `gateway_ref` is here so a real refund call slots
+    in later. `amount` is what the customer gets back per the time-based policy;
+    the rest is the retained cancellation fee."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSED = "processed", "Processed"
+        FAILED = "failed", "Failed"
+
+    booking = models.OneToOneField(
+        Booking, on_delete=models.CASCADE, related_name="refund"
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    percent = models.DecimalField(max_digits=5, decimal_places=2)
+    policy_note = models.CharField(max_length=120, blank=True)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PROCESSED
+    )
+    gateway_ref = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.booking.pnr} · refund ₹{self.amount} ({self.get_status_display()})"

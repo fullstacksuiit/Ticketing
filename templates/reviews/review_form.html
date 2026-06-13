@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Rate your trip — BusGo{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-lg">
+  <div class="card p-6">
+    <h1 class="text-xl font-bold text-slate-900">Rate your trip</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {{ booking.trip.bus.operator.company_name }} · {{ booking.trip.route }}<br>
+      {{ booking.trip.departure|date:"d M Y, H:i" }} · PNR {{ booking.pnr }}
+    </p>
+
+    <form method="post" action="{% url 'review_create' booking.pnr %}" class="mt-5">
+      {% csrf_token %}
+
+      <label class="label">Your rating</label>
+      <div id="stars" class="flex gap-1 text-4xl text-slate-300">
+        {% for i in "12345"|make_list %}
+          <button type="button" data-value="{{ forloop.counter }}"
+                  class="star leading-none transition hover:scale-110">★</button>
+        {% endfor %}
+      </div>
+      {{ form.rating }}
+      {% if form.rating.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.rating.errors.0 }}</p>{% endif %}
+
+      <div class="mt-5">
+        <label class="label" for="{{ form.comment.id_for_label }}">Comment <span class="font-normal text-slate-400">(optional)</span></label>
+        {{ form.comment }}
+      </div>
+
+      <button class="btn-primary mt-5 w-full justify-center py-3">Submit review</button>
+    </form>
+  </div>
+  <p class="mt-4 text-center text-sm">
+    <a href="{% url 'ticket' booking.pnr %}" class="font-medium text-slate-500 hover:text-slate-700">← Back to ticket</a>
+  </p>
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById('{{ form.rating.id_for_label }}');
+    var stars = Array.prototype.slice.call(document.querySelectorAll('#stars .star'));
+    function paint(value) {
+      stars.forEach(function (s) {
+        s.classList.toggle('text-amber-400', s.dataset.value <= value);
+        s.classList.toggle('text-slate-300', s.dataset.value > value);
+      });
+    }
+    stars.forEach(function (s) {
+      s.addEventListener('click', function () { input.value = s.dataset.value; paint(s.dataset.value); });
+      s.addEventListener('mouseenter', function () { paint(s.dataset.value); });
+    });
+    document.getElementById('stars').addEventListener('mouseleave', function () { paint(input.value || 0); });
+    paint(input.value || 0);
+  })();
+</script>
+{% endblock %}

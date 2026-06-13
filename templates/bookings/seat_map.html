@@ -2,20 +2,40 @@
 {% block title %}Select seats — BusGo{% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="card mb-5 p-5">
-  <div class="flex flex-wrap items-center gap-3">
-    <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/><path d="M4 9h16"/></svg>
-    </div>
-    <div>
-      <h1 class="text-lg font-bold text-slate-900">{{ trip.bus.operator.company_name }}</h1>
-      <p class="text-sm text-slate-500">
-        {{ from_city }} → {{ to_city }} · {{ trip.bus.name }} ({{ trip.bus.bus_type_label }})
-      </p>
-      <p class="text-xs text-slate-400">{{ trip.departure|date:"d M, H:i" }} → {{ trip.arrival|date:"d M, H:i" }} · from ₹{{ base_fare }}/seat</p>
-    </div>
+<!-- Top bar: route + close + rating -->
+<div class="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-card">
+  <div class="flex items-center gap-3">
+    <a href="{% url 'search' %}?from={{ from_city|urlencode }}&to={{ to_city|urlencode }}"
+       class="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" title="Back to results">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </a>
+    <h1 class="flex items-center gap-2 text-base font-bold text-slate-900 sm:text-lg">
+      {{ from_city }}
+      <svg class="h-4 w-4 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      {{ to_city }}
+    </h1>
   </div>
+  {% include "reviews/_stars.html" with rating=trip.bus.rating %}
+</div>
+
+<!-- Stepper -->
+<div class="mb-5 flex items-center justify-center">
+  <ol class="flex items-center gap-3 text-sm font-semibold sm:gap-5">
+    <li class="flex items-center gap-2 text-brand">
+      <span class="grid h-6 w-6 place-items-center rounded-full bg-brand text-xs text-white">1</span>
+      Select seats
+    </li>
+    <span class="h-px w-6 bg-slate-200 sm:w-10"></span>
+    <li class="flex items-center gap-2 text-slate-400">
+      <span class="grid h-6 w-6 place-items-center rounded-full bg-slate-200 text-xs text-slate-500">2</span>
+      Board / Drop point
+    </li>
+    <span class="h-px w-6 bg-slate-200 sm:w-10"></span>
+    <li class="flex items-center gap-2 text-slate-400">
+      <span class="grid h-6 w-6 place-items-center rounded-full bg-slate-200 text-xs text-slate-500">3</span>
+      Passenger info
+    </li>
+  </ol>
 </div>
 
 <form method="post" action="{% url 'trip_seats' trip.id %}">
@@ -23,86 +43,230 @@
   <input type="hidden" name="from" value="{{ from_city }}">
   <input type="hidden" name="to" value="{{ to_city }}">
 
-  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_20rem]">
-    <!-- Seat map -->
-    <div class="card p-6">
-      <div class="mb-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
-        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded border border-slate-300 bg-white"></span> Available</span>
-        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded bg-emerald-500"></span> Selected</span>
-        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded bg-slate-300"></span> Booked</span>
-        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded border border-pink-300 bg-pink-100"></span> Ladies</span>
-        <span class="flex items-center gap-1.5">🪟 Window · +₹ premium</span>
-      </div>
-
-      {% for deck in decks %}
-        <div class="mb-6">
-          <h2 class="mb-2 text-sm font-semibold capitalize text-slate-700">{{ deck.deck }} deck</h2>
-          <div class="inline-block rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div class="mb-2 flex items-center justify-end gap-1 text-[10px] uppercase tracking-wide text-slate-400">
-              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
-              Driver
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_24rem]">
+    <!-- LEFT: seat decks side by side -->
+    <div class="card p-5 sm:p-6">
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {% for deck in decks %}
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="mb-2 flex items-center justify-between">
+              <h2 class="text-sm font-semibold capitalize text-slate-700">{{ deck.deck }} deck</h2>
+              <svg class="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
             </div>
-            <div class="seat-grid" style="grid-template-columns: repeat({{ deck.cols }}, 3.5rem);">
+            <div class="seat-grid" style="grid-template-columns: repeat({{ deck.cols }}, 3.25rem);">
               {% for seat in deck.seats %}
                 {% if seat.is_reserved %}
                   <span class="seat-box cursor-not-allowed border border-dashed border-slate-300 bg-slate-100 text-slate-400"
                         style="grid-column: {{ seat.col }}; grid-row: {{ seat.row }} / span {{ seat.row_span }};"
                         title="Reserved">{{ seat.seat_number }}<br><span class="text-[9px]">🔒</span></span>
                 {% elif seat.is_booked %}
-                  <span class="seat-box cursor-not-allowed bg-slate-300 text-slate-500"
-                        style="grid-column: {{ seat.col }}; grid-row: {{ seat.row }} / span {{ seat.row_span }};">{{ seat.seat_number }}</span>
+                  <span class="seat-box cursor-not-allowed border border-slate-200 bg-slate-200/70 text-[9px] font-medium text-slate-400"
+                        style="grid-column: {{ seat.col }}; grid-row: {{ seat.row }} / span {{ seat.row_span }};">Sold</span>
                 {% else %}
                   <label class="seat seat-box cursor-pointer border bg-white transition hover:border-brand
-                                {% if seat.is_ladies %}border-pink-300 bg-pink-50{% else %}border-slate-300{% endif %}"
+                                {% if seat.is_ladies %}border-pink-300 bg-pink-50{% else %}border-emerald-300{% endif %}"
                          style="grid-column: {{ seat.col }}; grid-row: {{ seat.row }} / span {{ seat.row_span }};">
                     <input type="checkbox" name="seats" value="{{ seat.id }}" class="hidden seat-cb" data-fare="{{ seat.trip_fare }}">
                     {% if seat.is_window %}<span class="absolute left-1 top-0.5 text-[9px]">🪟</span>{% endif %}
-                    <span class="font-semibold">{{ seat.seat_number }}</span>
-                    <span class="text-[9px] text-slate-400">{{ seat.get_seat_type_display }}</span>
-                    {% if seat.price_modifier %}<span class="text-[9px] font-semibold text-emerald-600">₹{{ seat.trip_fare }}</span>{% endif %}
+                    <span class="font-semibold text-slate-700">{{ seat.seat_number }}</span>
+                    <span class="text-[9px] font-semibold text-emerald-600">₹{{ seat.trip_fare }}</span>
                   </label>
                 {% endif %}
               {% endfor %}
             </div>
           </div>
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
+
+      <!-- Legend -->
+      <div class="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded border border-emerald-300 bg-white"></span> Available</span>
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded bg-emerald-500"></span> Selected</span>
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded bg-slate-200"></span> Sold</span>
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded border border-pink-300 bg-pink-100"></span> Ladies</span>
+        <span class="flex items-center gap-1.5">🪟 Window</span>
+      </div>
     </div>
 
-    <!-- Sticky summary -->
-    <aside class="lg:sticky lg:top-24 lg:self-start">
-      <div class="card p-5">
-        <h3 class="text-sm font-semibold text-slate-900">Your selection</h3>
-        <p class="mt-1 text-xs text-slate-500">Tap a seat to add it.</p>
-
-        <div class="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-          <span class="text-sm text-slate-600"><span id="count">0</span> seat(s)</span>
-          <span class="text-lg font-extrabold text-slate-900">₹<span id="total">0</span></span>
+    <!-- RIGHT: operator info panel with tabs -->
+    <aside class="space-y-5">
+      <div class="card overflow-hidden">
+        <!-- Operator header -->
+        <div class="flex items-start justify-between gap-3 p-5">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">{{ trip.bus.operator.company_name }}</h2>
+            <p class="text-sm text-slate-500">{{ trip.departure|date:"H:i" }} – {{ trip.arrival|date:"H:i" }} · {{ trip.departure|date:"D d M" }}</p>
+            <span class="mt-1 inline-block badge-brand">{{ trip.bus.bus_type_label }}</span>
+          </div>
+          {% include "reviews/_stars.html" with rating=trip.bus.rating %}
         </div>
 
-        <button class="btn-primary mt-4 w-full justify-center py-3">
-          Continue
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-        </button>
-        <p class="mt-3 text-center text-[11px] text-slate-400">You'll add passenger details next.</p>
+        <!-- Photos (click to zoom) -->
+        {% if trip.bus.photos.all %}
+          <div class="flex gap-2 overflow-x-auto px-5 pb-4">
+            {% for photo in trip.bus.photos.all %}
+              <button type="button" class="zoom-photo group relative shrink-0" data-full="{{ photo.image.url }}" data-caption="{{ photo.caption }}">
+                <img src="{{ photo.image.url }}" alt="{{ photo.caption|default:trip.bus.name }}"
+                     class="h-20 w-28 rounded-lg object-cover ring-1 ring-slate-200 transition group-hover:opacity-90">
+                <span class="pointer-events-none absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-md bg-black/40 text-white opacity-0 transition group-hover:opacity-100">
+                  <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+                </span>
+              </button>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Tabs -->
+        <div class="border-t border-slate-100">
+          <div class="flex gap-1 overflow-x-auto px-3 pt-2 text-sm font-medium" role="tablist">
+            <button type="button" class="info-tab whitespace-nowrap rounded-t-lg px-3 py-2 text-slate-500" data-tab="boarding">Boarding</button>
+            <button type="button" class="info-tab whitespace-nowrap rounded-t-lg px-3 py-2 text-slate-500" data-tab="dropping">Dropping</button>
+            <button type="button" class="info-tab whitespace-nowrap rounded-t-lg px-3 py-2 text-slate-500" data-tab="route">Bus route</button>
+            <button type="button" class="info-tab whitespace-nowrap rounded-t-lg px-3 py-2 text-slate-500" data-tab="features">Features</button>
+            <button type="button" class="info-tab whitespace-nowrap rounded-t-lg px-3 py-2 text-slate-500" data-tab="rating">Rating</button>
+          </div>
+
+          <div class="max-h-72 overflow-y-auto p-5 text-sm">
+            <!-- Boarding -->
+            <div class="info-panel" data-panel="boarding">
+              {% for g in boarding %}
+                <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ g.city }}</p>
+                <ul class="mb-3 space-y-1">
+                  {% for o in g.options %}<li class="flex items-center gap-2 text-slate-600"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ o.label }}</li>{% endfor %}
+                </ul>
+              {% empty %}
+                <p class="text-slate-400">Boarding points are confirmed at the next step.</p>
+              {% endfor %}
+            </div>
+            <!-- Dropping -->
+            <div class="info-panel hidden" data-panel="dropping">
+              {% for g in dropping %}
+                <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ g.city }}</p>
+                <ul class="mb-3 space-y-1">
+                  {% for o in g.options %}<li class="flex items-center gap-2 text-slate-600"><span class="h-1.5 w-1.5 rounded-full bg-brand"></span>{{ o.label }}</li>{% endfor %}
+                </ul>
+              {% empty %}
+                <p class="text-slate-400">Dropping points are confirmed at the next step.</p>
+              {% endfor %}
+            </div>
+            <!-- Route -->
+            <div class="info-panel hidden" data-panel="route">
+              <ol class="space-y-3">
+                {% for city in route_stages %}
+                  <li class="flex items-center gap-3">
+                    <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">{{ forloop.counter }}</span>
+                    <span class="font-medium text-slate-700">{{ city }}</span>
+                    {% if forloop.first %}<span class="badge-slate">Source</span>{% elif forloop.last %}<span class="badge-slate">Destination</span>{% endif %}
+                  </li>
+                {% endfor %}
+              </ol>
+            </div>
+            <!-- Features -->
+            <div class="info-panel hidden" data-panel="features">
+              {% if trip.bus.amenities_list %}
+                <div class="flex flex-wrap gap-1.5">
+                  {% for a in trip.bus.amenities_list %}<span class="badge-slate">{{ a }}</span>{% endfor %}
+                </div>
+              {% else %}
+                <p class="text-slate-400">No extra amenities listed for this bus.</p>
+              {% endif %}
+              <p class="mt-3 text-slate-500">{{ trip.bus.name }} · {{ trip.bus.bus_type_label }}</p>
+            </div>
+            <!-- Rating -->
+            <div class="info-panel hidden" data-panel="rating">
+              {% with reviews=trip.bus.reviews.all|slice:":5" %}
+                {% if reviews %}
+                  <div class="space-y-2">
+                    {% for r in reviews %}
+                      <div class="rounded-xl bg-slate-50 p-3">
+                        <div class="flex items-center gap-2 text-xs">
+                          <span class="font-semibold text-amber-500">{% for _ in "12345"|make_list %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+                          <span class="font-medium text-slate-600">{{ r.display_name }}</span>
+                          <span class="text-slate-400">· {{ r.created_at|date:"d M Y" }}</span>
+                        </div>
+                        {% if r.comment %}<p class="mt-1 text-slate-600">{{ r.comment }}</p>{% endif %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <p class="text-slate-400">No ratings yet — be the first to review after your trip.</p>
+                {% endif %}
+              {% endwith %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cancellation policy -->
+      <div class="card p-5">
+        <h3 class="mb-3 text-sm font-semibold text-slate-900">Cancellation policy</h3>
+        <div class="overflow-hidden rounded-xl border border-slate-100">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 text-left uppercase tracking-wide text-slate-400">
+              <tr><th class="px-3 py-2 font-semibold">Time window</th><th class="px-3 py-2 text-right font-semibold">Refund</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for row in refund_schedule %}
+                <tr class="{% if row.percent == 0 %}bg-rose-50/60{% endif %}">
+                  <td class="px-3 py-2 text-slate-600">
+                    {% if not row.start %}Before {{ row.end|date:"d M, H:i" }}
+                    {% else %}{{ row.start|date:"d M, H:i" }} → {{ row.end|date:"d M, H:i" }}{% endif %}
+                  </td>
+                  <td class="px-3 py-2 text-right font-semibold {% if row.percent == 0 %}text-rose-600{% else %}text-slate-700{% endif %}">{{ row.percent|floatformat:0 }}%</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </aside>
   </div>
+
+  <!-- Sticky selection bar -->
+  <div class="sticky bottom-0 z-30 mt-5 -mb-8 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-10px_24px_-14px_rgba(16,24,40,.25)] backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
+      <div class="flex items-baseline gap-3">
+        <span class="text-sm text-slate-500"><span id="count">0</span> seat(s)</span>
+        <span class="text-xl font-extrabold text-slate-900">₹<span id="total">0</span></span>
+      </div>
+      <button id="continue-btn" class="btn-primary px-6 py-2.5" disabled>
+        Continue
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
 </form>
+
+<!-- Photo lightbox -->
+<div id="lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+  <button type="button" id="lightbox-close" class="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20" aria-label="Close">
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+  </button>
+  <figure class="max-h-full max-w-3xl text-center">
+    <img id="lightbox-img" src="" alt="" class="mx-auto max-h-[80vh] w-auto rounded-2xl shadow-2xl">
+    <figcaption id="lightbox-caption" class="mt-3 text-sm text-white/80"></figcaption>
+  </figure>
+</div>
 
 <style>
   .seat-grid { display:grid; gap:.4rem; }
-  .seat-box { width:3.5rem; min-height:3rem; border-radius:.6rem; font-size:.7rem; position:relative;
-              display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .seat-box { width:3.25rem; min-height:2.9rem; border-radius:.6rem; font-size:.7rem; position:relative;
+              display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+              transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease; }
+  /* Selected seat pops forward (pure-CSS, mirrors the JS color swap) */
+  .seat:has(.seat-cb:checked) { transform: translateY(-1px) scale(1.06); box-shadow: 0 6px 14px -6px rgba(16,185,129,.6); z-index:1; }
+  .info-tab.is-active { background:#fff; color:#e11d48; box-shadow: inset 0 -2px 0 0 #e11d48; }
 </style>
 
 <script>
+  // Selection summary
   function refresh() {
     var checked = document.querySelectorAll('.seat-cb:checked');
     var total = 0;
     checked.forEach(function (cb) { total += parseFloat(cb.dataset.fare) || 0; });
     document.getElementById('count').textContent = checked.length;
     document.getElementById('total').textContent = total.toFixed(0);
+    document.getElementById('continue-btn').disabled = checked.length === 0;
   }
   document.querySelectorAll('.seat-cb').forEach(function (cb) {
     cb.addEventListener('change', function () {
@@ -112,5 +276,39 @@
       refresh();
     });
   });
+
+  // Info panel tabs
+  var tabs = document.querySelectorAll('.info-tab');
+  var panels = document.querySelectorAll('.info-panel');
+  function activate(name) {
+    tabs.forEach(function (t) { t.classList.toggle('is-active', t.dataset.tab === name); });
+    panels.forEach(function (p) { p.classList.toggle('hidden', p.dataset.panel !== name); });
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { activate(t.dataset.tab); }); });
+  if (tabs.length) activate('boarding');
+
+  // Photo lightbox — click a thumbnail to zoom
+  var lightbox = document.getElementById('lightbox');
+  var lightboxImg = document.getElementById('lightbox-img');
+  var lightboxCaption = document.getElementById('lightbox-caption');
+  function openLightbox(src, caption) {
+    lightboxImg.src = src;
+    lightboxCaption.textContent = caption || '';
+    lightbox.classList.remove('hidden');
+    lightbox.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    lightbox.classList.add('hidden');
+    lightbox.classList.remove('flex');
+    lightboxImg.src = '';
+    document.body.style.overflow = '';
+  }
+  document.querySelectorAll('.zoom-photo').forEach(function (btn) {
+    btn.addEventListener('click', function () { openLightbox(btn.dataset.full, btn.dataset.caption); });
+  });
+  document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', function (e) { if (e.target === lightbox) closeLightbox(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLightbox(); });
 </script>
 {% endblock %}

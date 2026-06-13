@@ -9,7 +9,7 @@
 
 <div class="max-w-2xl mx-auto">
   <a href="{% if editing %}{% url 'route_detail' route.id %}{% else %}{% url 'route_list' %}{% endif %}"
-     class="text-sm text-gray-500 hover:underline">← Back</a>
+     class="text-sm font-medium text-slate-500 hover:text-brand">← Back</a>
 
   <div class="mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card">
     <div class="bg-gradient-to-r from-brand-700 to-brand px-6 py-6 text-white">
@@ -20,42 +20,42 @@
     <form method="post" class="p-6 space-y-6" data-route-form>
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{{ form.non_field_errors }}</div>
+        <div class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ form.non_field_errors }}</div>
       {% endif %}
 
       <!-- Live corridor preview -->
-      <div class="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl px-4 py-3 flex-wrap" data-route-preview>
-        <span class="font-semibold text-gray-800" data-preview-from>{{ form.source_city.value|default:"Source" }}</span>
+      <div class="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 rounded-xl px-4 py-3 flex-wrap" data-route-preview>
+        <span class="font-semibold text-slate-800" data-preview-from>{{ form.source_city.value|default:"Source" }}</span>
         <span data-preview-via class="contents"></span>
-        <span class="text-gray-300">→</span>
-        <span class="font-semibold text-gray-800" data-preview-to>{{ form.destination_city.value|default:"Destination" }}</span>
+        <span class="text-slate-300">→</span>
+        <span class="font-semibold text-slate-800" data-preview-to>{{ form.destination_city.value|default:"Destination" }}</span>
       </div>
 
       <!-- Source / Destination -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="relative" data-combobox>
-          <label class="block text-xs font-medium text-gray-500 mb-1">Source city</label>
+          <label class="label">Source city</label>
           <input type="text" name="source_city" value="{{ form.source_city.value|default:'' }}" placeholder="Leaving from"
                  autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
                  data-combobox-input data-preview-bind="from" required
                  class="input">
           <ul data-combobox-list class="hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg text-sm"></ul>
-          {% for e in form.source_city.errors %}<p class="text-xs text-red-600 mt-1">{{ e }}</p>{% endfor %}
+          {% for e in form.source_city.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
         </div>
         <div class="relative" data-combobox>
-          <label class="block text-xs font-medium text-gray-500 mb-1">Destination city</label>
+          <label class="label">Destination city</label>
           <input type="text" name="destination_city" value="{{ form.destination_city.value|default:'' }}" placeholder="Going to"
                  autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
                  data-combobox-input data-preview-bind="to" required
                  class="input">
           <ul data-combobox-list class="hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg text-sm"></ul>
-          {% for e in form.destination_city.errors %}<p class="text-xs text-red-600 mt-1">{{ e }}</p>{% endfor %}
+          {% for e in form.destination_city.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
         </div>
       </div>
 
       <!-- Via cities — multi-city chip picker -->
       <div class="relative" data-via data-via-initial="{{ form.via_cities.value|default:'' }}">
-        <label class="block text-xs font-medium text-gray-500 mb-1">Via cities <span class="text-gray-400 font-normal">— optional, in travel order</span></label>
+        <label class="label">Via cities <span class="text-slate-400 font-normal">— optional, in travel order</span></label>
         <input type="hidden" name="via_cities" value="{{ form.via_cities.value|default:'' }}" data-via-value>
         <div class="flex flex-wrap items-center gap-2 rounded-xl border border-slate-300 px-2 py-1.5 transition focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
           <span data-via-chips class="contents"></span>
@@ -64,30 +64,30 @@
                  class="flex-1 min-w-[8rem] border-0 p-1 text-sm focus:outline-none focus:ring-0">
         </div>
         <ul data-via-list class="hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg text-sm"></ul>
-        <p class="text-xs text-gray-400 mt-1">Type to search, Enter or click to add. These become bookable boarding/dropping points with their own fares.</p>
-        {% for e in form.via_cities.errors %}<p class="text-xs text-red-600 mt-1">{{ e }}</p>{% endfor %}
+        <p class="text-xs text-slate-400 mt-1">Type to search, Enter or click to add. These become bookable boarding/dropping points with their own fares.</p>
+        {% for e in form.via_cities.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
       </div>
 
       <!-- Fare & distance -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">Base fare <span class="text-gray-400 font-normal">(₹, full corridor)</span></label>
+          <label class="label">Base fare <span class="text-slate-400 font-normal">(₹, full corridor)</span></label>
           <input type="number" name="base_fare" min="0" step="0.01" value="{{ form.base_fare.value|default:'' }}" placeholder="e.g. 850"
                  required class="input">
-          <p class="text-xs text-gray-400 mt-1">Every trip on this route is priced at this fare. Individual legs can be priced separately later.</p>
-          {% for e in form.base_fare.errors %}<p class="text-xs text-red-600 mt-1">{{ e }}</p>{% endfor %}
+          <p class="text-xs text-slate-400 mt-1">Every trip on this route is priced at this fare. Individual legs can be priced separately later.</p>
+          {% for e in form.base_fare.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">Distance <span class="text-gray-400 font-normal">(km, optional)</span></label>
+          <label class="label">Distance <span class="text-slate-400 font-normal">(km, optional)</span></label>
           <input type="number" name="distance_km" min="0" value="{{ form.distance_km.value|default:'' }}" placeholder="e.g. 560"
                  class="input">
-          {% for e in form.distance_km.errors %}<p class="text-xs text-red-600 mt-1">{{ e }}</p>{% endfor %}
+          {% for e in form.distance_km.errors %}<p class="mt-1 text-xs text-rose-600">{{ e }}</p>{% endfor %}
         </div>
       </div>
 
-      <div class="flex items-center gap-3 pt-2 border-t">
-        <button class="bg-brand hover:bg-brand-dark text-white font-medium rounded-lg px-6 py-2.5">{% if editing %}Save changes{% else %}Create route{% endif %}</button>
-        <a href="{% if editing %}{% url 'route_detail' route.id %}{% else %}{% url 'route_list' %}{% endif %}" class="text-sm text-gray-500 hover:underline">Cancel</a>
+      <div class="flex items-center gap-3 border-t border-slate-100 pt-4">
+        <button class="btn-primary">{% if editing %}Save changes{% else %}Create route{% endif %}</button>
+        <a href="{% if editing %}{% url 'route_detail' route.id %}{% else %}{% url 'route_list' %}{% endif %}" class="text-sm font-medium text-slate-500 hover:text-brand">Cancel</a>
       </div>
     </form>
   </div>
@@ -132,7 +132,7 @@
       });
       if (preview) {
         preview.innerHTML = chips.map(function (c) {
-          return '<span class="text-gray-300">→</span><span class="text-gray-600">' + c + '</span>';
+          return '<span class="text-slate-300">→</span><span class="text-slate-600">' + c + '</span>';
         }).join('');
       }
     }

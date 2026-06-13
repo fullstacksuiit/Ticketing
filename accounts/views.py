@@ -4,16 +4,26 @@ from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
 
 from bookings.cities import INDIAN_CITIES, PRIORITY_CITIES
+from operators.models import Operator
+from promotions.models import Banner
 
 from .forms import SignupForm
 
 
 def home(request):
-    """Landing page with the searchable From/To route dropdowns."""
+    """Landing page with the searchable From/To route dropdowns, plus any
+    admin-controlled promotional banners and featured operators."""
     return render(
         request,
         "home.html",
-        {"cities": INDIAN_CITIES, "priority_cities": PRIORITY_CITIES},
+        {
+            "cities": INDIAN_CITIES,
+            "priority_cities": PRIORITY_CITIES,
+            "carousel_banners": Banner.objects.live(Banner.Placement.CAROUSEL),
+            "hero_banners": Banner.objects.live(Banner.Placement.HERO),
+            "strip_banners": Banner.objects.live(Banner.Placement.STRIP),
+            "featured_operators": Operator.featured(),
+        },
     )
 
 

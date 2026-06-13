@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ config.verbose_name_plural }} · Admin · BusGo{% endblock %}
+
+{% block content %}
+{% include "admin_panel/_nav.html" %}
+
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">{{ config.verbose_name_plural }}</h1>
+    <p class="text-sm text-slate-500">{{ total }} record{{ total|pluralize }}</p>
+  </div>
+  {% if config.can_add %}
+    <a href="{% url 'admin_model_add' config.app_label config.model_name %}" class="btn-primary px-4 py-2 text-sm">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add {{ config.verbose_name|lower }}
+    </a>
+  {% endif %}
+</div>
+
+<!-- Search + filters -->
+<form method="get" class="card mt-4 flex flex-wrap items-end gap-3 p-4">
+  {% if config.search_fields %}
+    <div class="min-w-[200px] flex-1">
+      <label class="label">Search</label>
+      <input type="text" name="q" value="{{ query }}" placeholder="Search…" class="input">
+    </div>
+  {% endif %}
+  {% for f in filters %}
+    <div>
+      <label class="label">{{ f.label }}</label>
+      <select name="{{ f.path }}" class="input min-w-[150px]" onchange="this.form.submit()">
+        <option value="">All</option>
+        {% for opt in f.options %}
+          <option value="{{ opt.value }}" {% if opt.value == f.current %}selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endfor %}
+  <button class="btn-outline px-4 py-2.5 text-sm">Apply</button>
+  {% if query or querystring %}
+    <a href="{% url 'admin_model_list' config.app_label config.model_name %}" class="px-2 py-2.5 text-sm font-medium text-slate-500 hover:text-brand">Clear</a>
+  {% endif %}
+</form>
+
+<!-- Table (wrapped in the bulk-action form when actions exist) -->
+<form method="post" action="{% url 'admin_model_action' config.app_label config.model_name %}" class="mt-4">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+  {% if config.actions %}
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+      <select name="action" class="input max-w-[220px]">
+        {% for a in config.actions %}<option value="{{ a.name }}">{{ a.label }}</option>{% endfor %}
+      </select>
+      <button class="btn-outline px-4 py-2 text-sm">Apply to selected</button>
+      <span class="text-xs text-slate-400" data-sel-count>0 selected</span>
+    </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            {% if config.actions %}<th class="w-10 px-4 py-3"><input type="checkbox" data-sel-all class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/30"></th>{% endif %}
+            {% for h in headers %}<th class="px-4 py-3 whitespace-nowrap">{{ h }}</th>{% endfor %}
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in rows %}
+            <tr class="hover:bg-slate-50">
+              {% if config.actions %}<td class="px-4 py-3"><input type="checkbox" name="_selected" value="{{ row.pk }}" data-sel class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/30"></td>{% endif %}
+              {% for cell in row.cells %}
+                <td class="px-4 py-3 align-top text-slate-700">
+                  {% if cell.type == 'bool' %}
+                    {% if cell.value %}<span class="badge-green">Yes</span>{% else %}<span class="badge-slate">No</span>{% endif %}
+                  {% else %}{{ cell.value }}{% endif %}
+                </td>
+              {% endfor %}
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                <a href="{% url 'admin_model_edit' config.app_label config.model_name row.pk %}" class="font-medium text-brand hover:underline">Edit</a>
+                {% if config.can_delete %}<a href="{% url 'admin_model_delete' config.app_label config.model_name row.pk %}" class="ml-3 font-medium text-rose-600 hover:underline">Delete</a>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="99" class="px-4 py-10 text-center text-slate-400">No records found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</form>
+
+<!-- Pagination -->
+{% if page.paginator.num_pages > 1 %}
+  <div class="mt-4 flex items-center justify-between text-sm">
+    <span class="text-slate-500">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    <div class="flex gap-1">
+      {% if page.has_previous %}<a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page.previous_page_number }}" class="btn-outline px-3 py-1.5">Previous</a>{% endif %}
+      {% if page.has_next %}<a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page.next_page_number }}" class="btn-outline px-3 py-1.5">Next</a>{% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<script>
+  (function () {
+    var all = document.querySelector('[data-sel-all]');
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('[data-sel]'));
+    var count = document.querySelector('[data-sel-count]');
+    function refresh() {
+      var n = boxes.filter(function (b) { return b.checked; }).length;
+      if (count) count.textContent = n + ' selected';
+    }
+    if (all) all.addEventListener('change', function () {
+      boxes.forEach(function (b) { b.checked = all.checked; });
+      refresh();
+    });
+    boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+  })();
+</script>
+{% endblock %}

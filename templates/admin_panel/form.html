@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{% if is_add %}Add{% else %}Edit{% endif %} {{ config.verbose_name|lower }} · Admin · BusGo{% endblock %}
+
+{% block content %}
+{% include "admin_panel/_nav.html" %}
+
+<div class="flex items-center gap-2 text-sm text-slate-500">
+  <a href="{% url 'admin_model_list' config.app_label config.model_name %}" class="hover:text-brand">{{ config.verbose_name_plural }}</a>
+  <span>/</span>
+  <span class="text-slate-700">{% if is_add %}New{% else %}{{ instance }}{% endif %}</span>
+</div>
+<div class="mt-1 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold text-slate-900">{% if is_add %}Add {{ config.verbose_name|lower }}{% else %}Edit {{ config.verbose_name|lower }}{% endif %}</h1>
+  {% if object_links %}
+    <div class="flex flex-wrap gap-2">
+      {% for link in object_links %}
+        <a href="{{ link.url }}" target="_blank" rel="noopener" class="btn-outline px-4 py-2 text-sm">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+          {{ link.label }}
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<form method="post" enctype="multipart/form-data" class="mt-6 space-y-6">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  {% if not is_add and config.detail_template %}{% include config.detail_template %}{% endif %}
+
+  <!-- Main fields -->
+  <div class="card p-6">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {% for field in form %}
+        <div class="{% if field.field.widget.input_type == 'checkbox' %}sm:col-span-2 flex items-start gap-2{% endif %}">
+          {% if field.field.widget.input_type == 'checkbox' %}
+            <div class="pt-0.5">{{ field }}</div>
+            <div>
+              <label for="{{ field.id_for_label }}" class="text-sm font-medium text-slate-700">{{ field.label }}</label>
+              {% if field.help_text %}<p class="text-xs text-slate-400">{{ field.help_text }}</p>{% endif %}
+            </div>
+          {% else %}
+            <label for="{{ field.id_for_label }}" class="label">{{ field.label }}{% if field.field.required %} <span class="text-brand">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>{% endif %}
+          {% endif %}
+          {% if field.errors %}<p class="mt-1 text-xs font-medium text-rose-600">{{ field.errors|striptags }}</p>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Inline formsets -->
+  {% for fsd in formsets %}
+    <div class="card p-6">
+      <h2 class="font-semibold text-slate-900">{{ fsd.inline.title }}</h2>
+      {{ fsd.formset.management_form }}
+      {% if fsd.formset.non_form_errors %}<div class="mt-2 text-xs text-rose-600">{{ fsd.formset.non_form_errors }}</div>{% endif %}
+      <div class="mt-3 overflow-x-auto">
+        <table class="min-w-full text-sm" data-formset>
+          <thead class="text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <tr>
+              {% for field in fsd.formset.empty_form.visible_fields %}<th class="px-2 py-2 whitespace-nowrap">{{ field.label }}</th>{% endfor %}
+              <th class="px-2 py-2">Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for subform in fsd.formset %}
+              <tr class="border-t border-slate-100">
+                {% for hidden in subform.hidden_fields %}{{ hidden }}{% endfor %}
+                {% for field in subform.visible_fields %}
+                  {% if field.name != 'DELETE' %}
+                    <td class="px-2 py-2 align-top">
+                      {{ field }}
+                      {% if field.errors %}<p class="mt-1 text-xs text-rose-600">{{ field.errors|striptags }}</p>{% endif %}
+                    </td>
+                  {% endif %}
+                {% endfor %}
+                <td class="px-2 py-2 align-top text-center">{{ subform.DELETE }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-2 text-xs text-slate-400">Blank rows are ignored. Tick “Delete” to remove an existing row.</p>
+    </div>
+  {% endfor %}
+
+  <div class="flex items-center gap-3">
+    <button class="btn-primary px-5 py-2.5 text-sm">{% if is_add %}Create{% else %}Save changes{% endif %}</button>
+    <a href="{% url 'admin_model_list' config.app_label config.model_name %}" class="btn-outline px-5 py-2.5 text-sm">Cancel</a>
+    {% if not is_add and config.can_delete %}
+      <a href="{% url 'admin_model_delete' config.app_label config.model_name instance.pk %}" class="ml-auto text-sm font-medium text-rose-600 hover:underline">Delete</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -47,6 +47,16 @@ class Operator(models.Model):
         max_length=20, choices=Status.choices, default=Status.PENDING
     )
 
+    # Promotional control (owner/admin) — surface this operator on the homepage.
+    is_featured = models.BooleanField(
+        default=False,
+        help_text="Promote this operator on the homepage.",
+    )
+    featured_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Lower numbers show first among featured operators.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)
 
@@ -55,6 +65,13 @@ class Operator(models.Model):
 
     def __str__(self):
         return self.company_name
+
+    @classmethod
+    def featured(cls):
+        """Approved operators the owner has promoted, in display order."""
+        return cls.objects.filter(
+            is_featured=True, status=cls.Status.APPROVED
+        ).order_by("featured_order", "company_name")
 
     @property
     def is_approved(self):
@@ -70,3 +87,11 @@ class Operator(models.Model):
         return (amount * self.effective_commission_rate / Decimal("100")).quantize(
             Decimal("0.01")
         )
+
+    @property
+    def rating(self):
+        """Average passenger rating and review count across all this operator's
+        trips, computed lazily to keep operators independent of the reviews app."""
+        from reviews.models import rating_for
+
+        return rating_for(operator=self)

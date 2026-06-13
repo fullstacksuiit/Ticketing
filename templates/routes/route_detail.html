@@ -6,7 +6,7 @@
 
 <div class="mb-6 flex items-start justify-between gap-4">
   <div>
-    <h1 class="text-2xl font-bold text-slate-900">{{ route }}</h1>
+    <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">{{ route }}</h1>
     <p class="text-sm text-slate-500">
       {% if route.via_list %}via {{ route.via_list|join:" · " }}{% endif %}
       {% if route.via_list and route.distance_km %} · {% endif %}

@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from operators.decorators import operator_required
 
 from .forms import BusForm
-from .models import Bus, Seat
+from .models import Bus, BusPhoto, Seat
 from .services import LayoutError, save_layout
 
 
@@ -45,7 +45,13 @@ def bus_add(request):
 
 
 def _layout_json(bus):
-    """Serialize a bus's current seats into the layout shape the editor expects."""
+    """Serialize a bus's current seats into the layout shape the editor expects.
+
+    `is_booked` flags seats that already have bookings: the editor locks these
+    so the operator can't remove or rename them (save_layout would reject it)."""
+    booked_ids = set(
+        bus.seats.filter(bookings__isnull=False).values_list("id", flat=True)
+    )
     decks = {Bus.Deck.LOWER: {"seats": []}, Bus.Deck.UPPER: {"seats": []}}
     for s in bus.seats.all():
         decks.setdefault(s.deck, {"seats": []})["seats"].append(
@@ -60,9 +66,38 @@ def _layout_json(bus):
                 "is_ladies": s.is_ladies,
                 "is_reserved": s.is_reserved,
                 "is_active": s.is_active,
+                "is_booked": s.id in booked_ids,
             }
         )
     return {"decks": decks}
+
+
+@operator_required
+def bus_photos(request, bus_id):
+    """Manage a bus's photo gallery — passengers see these before booking.
+    POST with files appends photos; POST with `delete` removes one."""
+    op = request.user.operator
+    bus = get_object_or_404(Bus, id=bus_id, operator=op)
+
+    if request.method == "POST":
+        delete_id = request.POST.get("delete")
+        if delete_id:
+            bus.photos.filter(id=delete_id).delete()
+            messages.success(request, "Photo removed.")
+            return redirect("bus_photos", bus_id=bus.id)
+
+        images = request.FILES.getlist("images")
+        if not images:
+            messages.error(request, "Please choose at least one image.")
+            return redirect("bus_photos", bus_id=bus.id)
+        # New photos go to the back of the gallery, after any existing ones.
+        start = bus.photos.count()
+        for i, img in enumerate(images):
+            BusPhoto.objects.create(bus=bus, image=img, sort_order=start + i)
+        messages.success(request, f"Added {len(images)} photo(s).")
+        return redirect("bus_photos", bus_id=bus.id)
+
+    return render(request, "buses/bus_photos.html", {"bus": bus})
 
 
 @operator_required

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Reschedule {{ booking.pnr }} — BusGo{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <div class="mb-5">
+    <h1 class="text-2xl font-bold text-slate-900">Change travel date</h1>
+    <p class="mt-1 text-sm text-slate-500">PNR {{ booking.pnr }} · pick another departure on this route. Your seats ({{ seat_numbers }}) and fare stay the same.</p>
+  </div>
+
+  <!-- Current departure -->
+  <div class="card p-5">
+    <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Currently booked</p>
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <p class="text-lg font-extrabold text-slate-900">{{ booking.journey_from }} → {{ booking.journey_to }}</p>
+        <p class="text-xs text-slate-500">{{ booking.trip.departure|date:"d M Y, H:i" }} · {{ booking.trip.bus.name }}</p>
+      </div>
+      <span class="badge-green">Current</span>
+    </div>
+  </div>
+
+  <!-- Alternative departures -->
+  <h2 class="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-slate-500">Other departures</h2>
+  {% if options %}
+    <div class="space-y-3">
+      {% for o in options %}
+        <div class="card flex items-center justify-between gap-4 p-5">
+          <div class="flex items-start gap-3">
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M16 2v4"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-slate-900">{{ o.trip.departure|date:"D, d M Y" }}</p>
+              <p class="text-sm text-slate-500">{{ o.trip.departure|date:"H:i" }} → {{ o.trip.arrival|date:"H:i" }} · {{ o.trip.bus.name }}</p>
+            </div>
+          </div>
+          {% if o.available %}
+            <form method="post" action="{% url 'reschedule' booking.pnr %}">
+              {% csrf_token %}
+              <input type="hidden" name="trip_id" value="{{ o.trip.id }}">
+              <button type="submit" class="btn-primary whitespace-nowrap">Move here →</button>
+            </form>
+          {% else %}
+            <span class="whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400">Seats unavailable</span>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card flex flex-col items-center gap-3 p-12 text-center">
+      <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-3xl">🗓️</div>
+      <p class="font-semibold text-slate-700">No other departures available on this route.</p>
+    </div>
+  {% endif %}
+
+  <div class="mt-5 text-center">
+    <a href="{% url 'ticket' booking.pnr %}" class="text-sm font-medium text-slate-500 hover:text-slate-700">← Keep my current booking</a>
+  </div>
+</div>
+{% endblock %}

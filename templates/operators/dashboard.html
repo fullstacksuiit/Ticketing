@@ -6,20 +6,14 @@
 
 <div class="flex items-center justify-between">
   <div>
-    <h1 class="text-2xl font-bold text-slate-900">{{ operator.company_name }}</h1>
+    <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">{{ operator.company_name }}</h1>
     <p class="text-sm text-slate-500">Operator dashboard</p>
   </div>
   <a href="{% url 'operator_onboarding' %}" class="btn-outline px-4 py-2 text-sm">Edit profile</a>
 </div>
 
 <!-- Approval status banner -->
-{% if operator.status == 'approved' %}
-  <div class="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
-    <span class="text-lg">✅</span>
-    <div>Your account is <strong>approved</strong>. Commission rate:
-      {% if operator.is_self_operated %}0% (your own buses){% else %}{{ operator.commission_rate }}%{% endif %}.</div>
-  </div>
-{% elif operator.status == 'pending' %}
+{% if operator.status == 'pending' %}
   <div class="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
     <span class="text-lg">⏳</span>
     <div>Your profile is <strong>pending approval</strong>. You can add buses once approved.</div>
@@ -29,7 +23,7 @@
     <span class="text-lg">⛔</span>
     <div>Your account is <strong>suspended</strong>. Please contact support.</div>
   </div>
-{% else %}
+{% elif operator.status == 'rejected' %}
   <div class="mt-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
     <span class="text-lg">❌</span>
     <div>Your application was <strong>not approved</strong>. Edit your profile and resubmit.</div>

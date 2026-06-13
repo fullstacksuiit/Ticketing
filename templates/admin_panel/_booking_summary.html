@@ -1,0 +1,77 @@
+{% comment %}Refund/cancellation summary for a booking's admin edit page.
+Context: `instance` (Booking), `refund` (Refund or None), `quote` (RefundQuote).{% endcomment %}
+<div class="card p-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="font-semibold text-slate-900">Cancellation &amp; refund</h2>
+    <div class="flex items-center gap-2">
+      {% if instance.status == 'confirmed' %}<span class="badge-green">Confirmed</span>
+      {% elif instance.status == 'cancelled' %}<span class="badge-red">Cancelled</span>
+      {% else %}<span class="badge-amber">Pending</span>{% endif %}
+      {% if instance.rescheduled_at %}<span class="badge-brand">Rescheduled</span>{% endif %}
+    </div>
+  </div>
+
+  {% if refund %}
+    <!-- A refund was recorded (booking has been cancelled) -->
+    <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Refunded</p>
+        <p class="mt-0.5 text-lg font-bold text-emerald-600">₹{{ refund.amount }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Refund %</p>
+        <p class="mt-0.5 text-lg font-bold text-slate-900">{{ refund.percent|floatformat:0 }}%</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Fee kept</p>
+        <p class="mt-0.5 text-lg font-bold text-slate-900">₹{{ instance.total_amount|floatformat:2 }}<span class="text-xs font-medium text-slate-400"> gross</span></p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Refund status</p>
+        <p class="mt-0.5 text-sm font-semibold text-slate-700">{{ refund.get_status_display }}</p>
+      </div>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+      {% if refund.policy_note %}<span>{{ refund.policy_note }}</span>{% endif %}
+      {% if instance.cancelled_at %}<span>Cancelled {{ instance.cancelled_at|date:"d M Y, H:i" }}</span>{% endif %}
+      {% if refund.gateway_ref %}<span>Ref: {{ refund.gateway_ref }}</span>{% endif %}
+    </div>
+
+  {% elif instance.status == 'confirmed' %}
+    <!-- Live what-if quote for a booking that can still be cancelled -->
+    {% if quote.cancellable %}
+      <div class="mt-4 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <span class="mt-0.5">ℹ️</span>
+        <div>
+          <p>If cancelled now: <strong>{{ quote.percent|floatformat:0 }}% refund = ₹{{ quote.amount }}</strong>, business keeps ₹{{ quote.retained }}.</p>
+          <p class="mt-0.5 text-xs text-sky-700">{{ quote.note }} · {{ quote.hours_left|floatformat:0 }}h until departure.</p>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <form method="post" action="{% url 'admin_model_action' config.app_label config.model_name %}">
+          {% csrf_token %}
+          <input type="hidden" name="_selected" value="{{ instance.pk }}">
+          <input type="hidden" name="action" value="cancel">
+          <input type="hidden" name="next" value="{% url 'admin_model_edit' config.app_label config.model_name instance.pk %}">
+          <button class="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 active:scale-[.98]"
+                  onclick="return confirm('Cancel this booking and refund ₹{{ quote.amount }}? This frees the seats.');">
+            Cancel &amp; refund ₹{{ quote.amount }}
+          </button>
+        </form>
+        {% if can_reschedule %}
+          <a href="{{ reschedule_url }}" class="btn-outline px-4 py-2 text-sm">Reschedule to another departure</a>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <span class="mt-0.5">⏳</span>
+        <div>{{ quote.reason|default:"This booking can no longer be cancelled." }}
+          <span class="block text-xs text-amber-700">An admin can still force-cancel via the bulk action on the bookings list (0% refund after departure).</span>
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <p class="mt-4 text-sm text-slate-500">No refund on record for this booking.</p>
+  {% endif %}
+</div>

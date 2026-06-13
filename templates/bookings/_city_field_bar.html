@@ -1,0 +1,19 @@
+{% comment %}Segmented search-bar variant of the city combobox.
+Params: field, value, placeholder, label, icon ("from"|"to").
+Shares the combobox script in base.html via the data-combobox hooks.{% endcomment %}
+<div class="relative flex-1" data-combobox>
+  <label class="sr-only">{{ label }}</label>
+  <div class="flex items-center gap-3 px-5 py-3.5">
+    {% if icon == "to" %}
+      <svg class="h-5 w-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    {% else %}
+      <svg class="h-5 w-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 22 2l-9 19-2-8-8-2Z"/></svg>
+    {% endif %}
+    <input type="text" name="{{ field }}" value="{{ value }}" placeholder="{{ placeholder }}"
+           autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
+           data-combobox-input
+           class="w-full border-0 bg-transparent p-0 text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-0">
+  </div>
+  <ul data-combobox-list
+      class="hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg text-sm"></ul>
+</div>

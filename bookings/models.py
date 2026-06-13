@@ -47,6 +47,10 @@ class Booking(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    # Set when the booking is moved to a different departure (same route, same
+    # seats, same price). Its presence marks the ticket as rescheduled.
+    rescheduled_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -60,7 +64,9 @@ class Booking(models.Model):
 
     @property
     def seat_numbers(self):
-        return ", ".join(bs.seat.seat_number for bs in self.booked_seats.all())
+        return ", ".join(
+            bs.seat.seat_number if bs.seat else "—" for bs in self.booked_seats.all()
+        )
 
     @property
     def journey_from(self):
@@ -95,7 +101,12 @@ class BookedSeat(models.Model):
 
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="booked_seats")
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="booked_seats")
-    seat = models.ForeignKey(Seat, on_delete=models.PROTECT, related_name="bookings")
+    # SET_NULL (not PROTECT): an operator may redesign a bus's seat map after
+    # sales start. Removing a booked seat detaches it here — the passenger keeps
+    # the booking but loses the seat assignment until it's reassigned.
+    seat = models.ForeignKey(
+        Seat, on_delete=models.SET_NULL, null=True, related_name="bookings"
+    )
 
     passenger_name = models.CharField(max_length=120)
     passenger_age = models.PositiveSmallIntegerField()
@@ -110,4 +121,28 @@ class BookedSeat(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.seat.seat_number} · {self.passenger_name}"
+        seat = self.seat.seat_number if self.seat else "—"
+        return f"{seat} · {self.passenger_name}"
+
+
+class SeatHold(models.Model):
+    """A temporary lock on a seat while a customer is at checkout. Holds are
+    keyed by the browser session, expire after a few minutes, and are deleted
+    once the booking confirms (or lazily once they lapse). The (trip, seat)
+    unique constraint makes concurrent holds race-safe — the second inserter
+    fails — closing the window where two customers pick the same seat before
+    either has paid. BookedSeat remains the ultimate double-booking guard."""
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="seat_holds")
+    seat = models.ForeignKey(Seat, on_delete=models.CASCADE, related_name="holds")
+    session_key = models.CharField(max_length=40)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["trip", "seat"], name="unique_hold_per_trip")
+        ]
+
+    def __str__(self):
+        return f"hold {self.seat.seat_number} · {self.session_key[:8]}"
