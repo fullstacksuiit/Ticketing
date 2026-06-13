@@ -137,7 +137,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_URL = "/static/"
+
+if DEBUG:
+    STATICFILES_DIRS = [str(BASE_DIR / "static")]
+
+if not DEBUG:
+    STATIC_ROOT = str(BASE_DIR / "static")
 
 # Uploaded media (operator bus photos). Served by Django in development only.
 MEDIA_URL = "media/"
