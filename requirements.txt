@@ -127,7 +127,7 @@ tzdata==2023.3
 tzlocal==4.2
 urllib3==2.0.7
 wcwidth==0.2.6
-weasyprint==60.2
+weasyprint==69.0
 webdriver-manager==3.4.2
 webencodings==0.5.1
 whitenoise==6.11.0
